@@ -47,3 +47,15 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# exclude hidden files
+**/.DS_Store
+**/._.DS_Store
+**/._FiSL-Reburn.Rproj
+._*
+# exclude specific folders from push to github
+figures/*
+images/*
+files/*
+data/*
+outputs/*
