@@ -1,0 +1,245 @@
+---
+title: "data extract worldClim2"
+author: "Anna Talucci"
+date: "2025-04-15"
+output: html_document
+---
+
+```{r clean environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+
+# Packages
+
+```{r}
+library(tidyverse)
+library(sf)
+library(terra)
+```
+
+# Data
+
+## points
+
+```{r}
+gpkg_files <- list.files("../outputs/LCC_cleaned/points/geopackage", pattern='.gpkg$', full.names=TRUE)
+```
+
+## rasters
+
+```{r}
+tmin_files <- list.files("../data/worldclim2/wc2.1_30s_tmin", pattern='.tif$', full.names = TRUE)
+```
+
+```{r}
+tmax_files <- list.files("../data/worldclim2/wc2.1_30s_tmax", pattern='.tif$', full.names = TRUE)
+```
+
+```{r}
+tavg_files <- list.files("../data/worldclim2/wc2.1_30s_tavg", pattern='.tif$', full.names = TRUE)
+```
+
+```{r}
+vapr_files <- list.files("../data/worldclim2/wc2.1_30s_vapr", pattern='.tif$', full.names = TRUE)
+```
+
+```{r}
+wind_files <- list.files("../data/worldclim2/wc2.1_30s_wind", pattern='.tif$', full.names = TRUE)
+```
+
+```{r}
+srad_files <- list.files("../data/worldclim2/wc2.1_30s_srad", pattern='.tif$', full.names = TRUE)
+```
+
+```{r}
+prec_files <- list.files("../data/worldclim2/wc2.1_30s_prec", pattern='.tif$', full.names = TRUE)
+```
+
+
+```{r}
+bio_files <- list.files("../data/worldclim2/wc2.1_30s_bio", pattern='.tif$', full.names = TRUE)
+```
+
+
+## view data
+
+```{r}
+gpkg_files
+```
+
+```{r}
+tmin_files
+```
+
+
+```{r}
+rast(tmin_files[1])
+```
+
+# Create Raster stack for extracting
+
+```{r}
+rename_and_stack_rasters12 <- function(raster_files) {
+  if (length(raster_files) != 12) {
+    stop("The function expects exactly 12 raster files.")
+  }
+ 
+  #layer_names <- c("aboveground_merch_live", "aboveground_total_live", "total_carbon")
+ 
+  # Read rasters and rename layers
+  rasters <- lapply(seq_along(raster_files), function(i) {
+    r <- rast(raster_files[i])  # Read raster
+    #names(r) <- layer_names[i]  # Rename layer
+    return(r)
+  })
+ 
+  # Stack all rasters together
+  raster_stack <- do.call(c, rasters)
+ 
+  return(raster_stack)
+}
+
+rename_and_stack_rasters19 <- function(raster_files) {
+  if (length(raster_files) != 19) {
+    stop("The function expects exactly 19 raster files.")
+  }
+ 
+  #layer_names <- c("aboveground_merch_live", "aboveground_total_live", "total_carbon")
+ 
+  # Read rasters and rename layers
+  rasters <- lapply(seq_along(raster_files), function(i) {
+    r <- rast(raster_files[i])  # Read raster
+    #names(r) <- layer_names[i]  # Rename layer
+    return(r)
+  })
+ 
+  # Stack all rasters together
+  raster_stack <- do.call(c, rasters)
+ 
+  return(raster_stack)
+}
+
+# Example usage:
+# raster_files <- list("path/to/raster1.tif", "path/to/raster2.tif", "path/to/raster3.tif", "path/to/raster4.tif", "path/to/raster5.tif")
+tmin_stack <- rename_and_stack_rasters12(tmin_files)
+tmax_stack <- rename_and_stack_rasters12(tmax_files)
+tavg_stack <- rename_and_stack_rasters12(tavg_files)
+vapr_stack <- rename_and_stack_rasters12(vapr_files)
+srad_stack <- rename_and_stack_rasters12(srad_files)
+prec_stack <- rename_and_stack_rasters12(prec_files)
+bio_stack <- rename_and_stack_rasters19(bio_files)
+# Print layer names to verify
+names(tmin_stack)
+names(tmax_stack)
+names(tavg_stack)
+names(vapr_stack)
+names(srad_stack)
+names(prec_stack)
+names(bio_stack)
+
+```
+
+
+
+
+
+
+# Points to spatVector
+
+```{r}
+(lc_pts = st_read(gpkg_files[1]) %>% mutate(ID = row_number()) )
+
+(lcc_pts = st_read(gpkg_files[2]) %>% mutate(ID = row_number()) )
+
+
+```
+
+
+
+```{r}
+sv_lc = vect(lc_pts)
+sv_lcc = vect(lcc_pts)
+
+```
+
+
+# Extract Stiched values at points
+
+```{r}
+( tmin_lc = extract(tmin_stack, sv_lc, xy=TRUE) )
+( tmax_lc = extract(tmax_stack, sv_lc, xy=TRUE) )
+( tavg_lc = extract(tavg_stack, sv_lc, xy=TRUE) )
+( vapr_lc = extract(vapr_stack, sv_lc, xy=TRUE) )
+( srad_lc = extract(srad_stack, sv_lc, xy=TRUE) )
+( prec_lc = extract(prec_stack, sv_lc, xy=TRUE) )
+( bio_lc = extract(bio_stack, sv_lc, xy=TRUE) )
+```
+
+```{r}
+( tmin_lcc = extract(tmin_stack, sv_lcc, xy=TRUE) )
+( tmax_lcc = extract(tmax_stack, sv_lcc, xy=TRUE) )
+( tavg_lcc = extract(tavg_stack, sv_lcc, xy=TRUE) )
+( vapr_lcc = extract(vapr_stack, sv_lcc, xy=TRUE) )
+( srad_lcc = extract(srad_stack, sv_lcc, xy=TRUE) )
+( prec_lcc = extract(prec_stack, sv_lcc, xy=TRUE) )
+( bio_lcc = extract(bio_stack, sv_lcc, xy=TRUE) )
+```
+
+
+# Get attribute dataframe
+
+```{r}
+points_as_df = function(pts){
+  pts %>%
+    st_drop_geometry()
+}
+
+
+
+(lc_df = lc_pts %>% points_as_df() )
+(lcc_df = lcc_pts %>% points_as_df() )
+
+```
+
+# Join extracted data to attribute df
+
+```{r}
+( lc_join = lc_df %>%
+  full_join(., tmin_lc, by=c("ID")) %>%
+  full_join(., tmax_lc, by=c("ID")) %>%
+  full_join(., tavg_lc, by=c("ID")) %>%
+  full_join(., srad_lc, by=c("ID")) %>%
+  full_join(., vapr_lc, by=c("ID")) %>%
+  full_join(., prec_lc, by=c("ID")) %>%
+  full_join(., bio_lc, by=c("ID")) %>%
+ dplyr::select(-contains(".y"), -contains(".x"))
+)
+```
+
+```{r}
+( lcc_join = lcc_df %>%
+  full_join(., tmin_lcc, by=c("ID")) %>%
+  full_join(., tmax_lcc, by=c("ID")) %>%
+  full_join(., tavg_lcc, by=c("ID")) %>%
+  full_join(., srad_lcc, by=c("ID")) %>%
+  full_join(., vapr_lcc, by=c("ID")) %>%
+  full_join(., prec_lcc, by=c("ID")) %>%
+  full_join(., bio_lcc, by=c("ID")) %>%
+ dplyr::select(-contains(".y"), -contains(".x"))
+)
+```
+
+
+
+
+
+
+# Save CSV
+
+```{r}
+write_csv(lc_join, "../outputs/extractSpatialData/lc_worldclim2_monthlyClimate_2025-04-17.csv")  
+write_csv(lcc_join, "../outputs/extractSpatialData/lcc_worldclim2_monthlyClimate_2025-04-17.csv")   
+```

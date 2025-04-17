@@ -1,0 +1,288 @@
+---
+title: "LCC LC Data Explore"
+author: "Anna Talucci"
+date: "2025-03-19"
+output: html_document
+---
+
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Load the LC and LCC data. Preform a brief QAQC. Generate files for acquiring spatial data sets of interest.
+
+
+LCC Project Data
+
+Field data here 
+
+Create geopackage and shapefile for collecting spatial data
+
+Spatial Data of interest
+Fire Weather*
+Long Term Climate Mean* - WorldClime version 2 or Climate NA
+
+Stand Age https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=2012
+Prefire NDVI
+Compare Burn Depth
+
+
+
+# Packages
+```{r}
+library(tidyverse)  # Data manipulation & visualization
+library(data.table)  # Fast data processing
+library(janitor)     # Cleaning column names
+#library(summarytools) # Summary statistics
+library(assertr)     # Validation checks
+library(sf)
+library(skimr)
+library(naniar)
+library(assertr)
+library(naniar)
+```
+
+# Data
+
+```{r}
+LCC_Site_Data = read_csv("../data/LCC/LCC_Site_Data_01292025.csv")
+LC_Plot_Final = read_csv("../data/LCC/PLOT_03262025_final.csv") # old data LC_Plot_Final_01292025.csv
+```
+
+
+# QAQC
+
+## 1. View data
+
+```{r}
+head(LCC_Site_Data)
+head(LC_Plot_Final)
+```
+
+```{r}
+sort(unique(LCC_Site_Data$Sampling_Date))
+```
+
+### Fire names and years
+
+```{r}
+sort(unique(LC_Plot_Final$official_fire_scar))
+```
+```{r}
+sort(unique(LCC_Site_Data$Year_of_Burn))
+``` 
+
+```{r}
+sort(unique(LC_Plot_Final$recent_burn))
+```
+```{r}
+LC_Plot_Final %>% 
+  group_by(official_fire_scar, recent_burn) %>%
+  summarize(n=n()) %>%
+  arrange(recent_burn) 
+
+```
+
+```{r}
+( LC_Plot_Final %>% 
+  group_by(official_fire_scar, recent_burn) %>%
+  summarize(n=n()) %>%
+  arrange(official_fire_scar) 
+  )
+```
+
+
+#### Fire year fix
+**Note:**
+Shovel creek field points should only be associated with Shovel creek fire year 2019 not 2015; need to fix typo
+
+```{r}
+LC_Plot_Final$recent_burn[LC_Plot_Final$official_fire_scar == "Shovel Creek"] <- 2019
+```
+
+```{r}
+( LC_Plot_Final %>% 
+  group_by(official_fire_scar, recent_burn) %>%
+  summarize(n=n()) %>%
+  arrange(official_fire_scar) 
+  )
+```
+```{r}
+( lc_fire_year = LC_Plot_Final %>% 
+  group_by(official_fire_scar, recent_burn) %>%
+  summarize(n=n()) %>%
+  arrange(recent_burn) 
+  )
+```
+
+```{r eval=FALSE, include=FALSE}
+write.csv(lc_fire_year, "../outputs/LC_Summary_FireScar_year_2025-04-15.csv", row.names = FALSE)
+```
+
+## View data again
+
+```{r}
+glimpse(LCC_Site_Data)
+glimpse(LC_Plot_Final)
+```
+
+
+```{r}
+sort(unique(LCC_Site_Data$Researcher))
+```
+
+```{r}
+LCC_Site_Data %>% group_by(Researcher)
+```
+
+## 2. Check latitude and longitude
+
+### LCC
+
+```{r}
+LCC_Site_Data %>% filter(Longitude>0)
+LCC_Site_Data %>% filter(Longitude<0)
+LCC_Site_Data %>% filter(is.na(Longitude))
+LCC_Site_Data %>% filter(is.na(Latitude))
+```
+
+### LC
+
+```{r}
+LC_Plot_Final %>% filter(longitude>0)
+LC_Plot_Final %>% filter(longitude<0)
+LC_Plot_Final %>% filter(is.na(longitude))
+LC_Plot_Final %>% filter(is.na(latitude))
+```
+
+```{r}
+unique(LCC_Site_Data$StudyArea) 
+```
+
+## 3. Check for duplicate rows
+
+```{r}
+sum(duplicated(LC_Plot_Final))  # Count duplicates
+#df <- df[!duplicated(df), ]  # Remove duplicates
+```
+
+```{r}
+sum(duplicated(LCC_Site_Data))  # Count duplicates
+#df <- df[!duplicated(df), ]  # Remove duplicates
+```
+
+## 4. Check Missing values
+
+```{r}
+colSums(is.na(LCC_Site_Data))  # Count missing values per column
+```
+
+```{r}
+colSums(is.na(LC_Plot_Final))  # Count missing values per column
+```
+
+```{r}
+gg_miss_var(LCC_Site_Data)  # Missing values by column
+gg_miss_var(LC_Plot_Final) 
+```
+
+
+## 5. Clean
+
+### Clean column names 
+
+```{r}
+LCC_Site_Data <- janitor::clean_names(LCC_Site_Data)
+LC_Plot_Final <- janitor::clean_names(LC_Plot_Final)
+```
+
+```{r}
+LCC_Site_Data
+```
+
+### Fix longitude issue, column names, and add row id
+
+```{r}
+# Convert all positive longitudes to negative
+(LCC_Site_Data <- LCC_Site_Data %>%
+  mutate(longitude = ifelse(longitude > 0, -longitude, longitude)) %>%
+   mutate(longitude = ifelse(study_area == "Sweden", abs(longitude), longitude)) %>%
+  rename(burnYr2 = x7, burnYr3 = x8) %>% #rename columns
+  mutate(row_id = row_number()) ) # add row id
+```
+
+
+
+```{r}
+( LC_Plot_Final <- LC_Plot_Final %>%
+  mutate(longitude = ifelse(longitude > 0, -longitude, longitude)) %>% 
+  select(-site_notes) %>% 
+  mutate(row_id = row_number()) )
+```
+```{r}
+sort(unique(LC_Plot_Final$official_fire_scar))
+```
+
+```{r}
+print(LCC_Site_Data)
+print(LC_Plot_Final)
+```
+
+
+## 6. Data Checks
+
+### Check categorical variables
+
+```{r eval=FALSE, include=FALSE}
+# Function to summarize categorical variables
+summarize_categorical <- function(df) {
+  df %>%
+    select(where(~ is.character(.) | is.factor(.))) %>%
+    map(~ list(
+      unique_values = unique(.),
+      count = table(.),
+      missing = sum(is.na(.))
+    ))
+}
+
+# Apply function
+summarize_categorical(LC_Plot_Final)
+summarize_categorical(LCC_Site_Data)
+# Print summary for each categorical variable
+
+
+```
+
+### Check Numeric Data 
+
+```{r}
+skim(LC_Plot_Final) %>%
+   mutate(across(where(is.numeric), ~ round(., 2)))
+```
+
+```{r}
+skim(LCC_Site_Data) %>%
+   mutate(across(where(is.numeric), ~ round(., 2)))
+```
+
+
+
+```{r}
+head(LC_Plot_Final)
+head(LCC_Site_Data)
+```
+
+```{r}
+summary(LC_Plot_Final)
+summary(LCC_Site_Data)
+```
+
+# Write
+
+```{r}
+write.csv(LC_Plot_Final, "../outputs/LCC_cleaned/csv/LC_Plot_cleaned_2025-04-16.csv")
+write.csv(LCC_Site_Data, "../outputs/LCC_cleaned/csv/LCC_Site_cleaned_2025-04-16.csv")
+```

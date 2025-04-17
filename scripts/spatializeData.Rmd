@@ -1,0 +1,284 @@
+---
+title: "Spatialize Data"
+author: "Anna Talucci"
+date: "2025-04-14"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Use cleaned qaqc data and spatialize
+
+
+
+# Packages
+```{r}
+library(tidyverse)  # Data manipulation & visualization
+
+library(sf)
+library(mapview)
+```
+
+
+# Data
+
+```{r}
+lc = read_csv("../outputs/LCC_cleaned/csv/LC_Plot_cleaned_2025-04-16.csv")
+lcc = read_csv("../outputs/LCC_cleaned/csv/LCC_Site_cleaned_2025-04-16.csv")
+```
+
+# Reorganize data and Spatialize
+
+This reformats data for Climate NA and spatializes data with limited attributes to use for extracting various spatial data products. 
+
+
+
+# Spatialize Data
+
+```{r}
+lc
+lcc
+```
+### Function to spatialize
+
+```{r}
+df_to_sf_wgs84 <- function(x){
+  st_as_sf(x, coords = c("longitude","latitude"), crs = 4326, remove = FALSE) # X. Walker states crs epsg:3338 but it ends up in the ocean 
+}
+```
+
+```{r}
+df_to_sf_NAD83 <- function(x){
+  st_as_sf(x, coords = c("longitude","latitude"), crs = 4269, remove = FALSE) # X. Walker states crs epsg:3338 but it ends up in the ocean 
+}
+```
+
+### points
+
+```{r}
+( lc_pts_wgs84 = lc %>% 
+  #select(row_id, fire, site, plot, unique_site_id, latitude, longitude, recent_burn) %>% 
+    df_to_sf_wgs84() 
+)
+```
+
+```{r}
+( lc_pts_NAD83 = lc %>% 
+  #select(row_id, fire, site, plot, unique_site_id, latitude, longitude, recent_burn) %>% 
+    df_to_sf_NAD83() 
+)
+```
+
+```{r}
+lc_pts_NAD83_wgs84 = st_transform(lc_pts_NAD83, crs = 4326)
+```
+
+```{r}
+( lcc_pts_wgs84 = lcc %>% 
+    #drop_na(latitude) %>%
+    df_to_sf_wgs84() 
+)
+```
+
+```{r}
+( lcc_pts_NAD83_wgs84 = lcc %>% 
+    #drop_na(latitude) %>%
+    df_to_sf_NAD83() %>%
+    st_transform(., crs = 4326)
+)
+```
+
+```{r}
+( ee_lcc_pts_wgs84 = lcc_pts_wgs84 %>% 
+    dplyr::select(row_id, researcher, study_area, site, sampling_date, year_of_burn, latitude, longitude) %>%
+    rename(PI = researcher, area= study_area, dateSmp = sampling_date, burnYr = year_of_burn, lat = latitude, lon = longitude)
+)
+```
+```{r}
+ee_lcc_pts_NAD83_wgs84 = lcc_pts_NAD83_wgs84 %>% 
+    dplyr::select(row_id, researcher, study_area, site, sampling_date, year_of_burn, latitude, longitude) %>%
+    rename(PI = researcher, area= study_area, dateSmp = sampling_date, burnYr = year_of_burn, lat = latitude, lon = longitude)
+```
+
+```{r}
+ee_lc_pts_NAD83_wgs84 = lc_pts_NAD83_wgs84 %>% 
+  dplyr::select(row_id, fire, site, plot, unique_site_id, latitude, longitude, recent_burn, official_fire_scar) %>% 
+  rename(siteID = unique_site_id, lat = latitude, lon = longitude, fireYr = recent_burn, fireNm = official_fire_scar)
+```
+
+# View points
+
+```{r}
+mapview(lc_pts_wgs84)
+```
+
+```{r}
+mapview(lc_pts_NAD83)
+```
+
+```{r}
+mapview(lc_pts_NAD83_wgs84)
+```
+
+```{r}
+mapview(lcc_pts_wgs84)
+```
+
+```{r}
+mapview(lcc_pts_NAD83)
+```
+
+# Save points with all attributes
+
+## geopackage
+
+```{r eval=FALSE, include=FALSE}
+st_write(lc_pts_NAD83_wgs84, "../outputs/LCC_cleaned/points/geopackage/lc_pts_NAD83_wgs84_2025-04-16.gpkg", )
+```
+
+```{r eval=FALSE, include=FALSE}
+st_write(lcc_pts_wgs84, "../outputs/LCC_cleaned/points/geopackage/lcc_pts_wgs84_2025-04-16.gpkg")
+```
+
+## shapefiles
+```{r eval=FALSE, include=FALSE}
+st_write(ee_lc_pts_NAD83_wgs84, "../outputs/LCC_cleaned/points/shapefiles/lc_pts_NAD83_wgs84_2025-04-16.shp", driver="ESRI Shapefile")
+```
+
+```{r eval=FALSE, include=FALSE}
+st_write(ee_lcc_pts_wgs84, "../outputs/LCC_cleaned/points/shapefiles/lcc_pts_wgs84_2025-04-16.shp", driver="ESRI Shapefile")
+```
+
+```{r eval=FALSE, include=FALSE}
+st_write(ee_lcc_pts_NAD83_wgs84, "../outputs/LCC_cleaned/points/shapefiles/lcc_pts_NAD83_wgs84_2025-04-16.shp", driver="ESRI Shapefile")
+```
+
+### Spatialize to points for FWI
+
+```{r}
+lc_pts_NAD83_wgs84
+lcc_pts_wgs84
+```
+
+
+```{r}
+lcc_pts_wgs84 %>% 
+  group_by(study_area, year_of_burn) %>% 
+  summarise(n=n())
+```
+
+```{r}
+lc_pts_NAD83_wgs84 %>% 
+  group_by(official_fire_scar, recent_burn) %>% 
+  summarise(n=n()) %>%
+  arrange(recent_burn)
+```
+
+```{r}
+unique(lc_pts_NAD83_wgs84$official_fire_scar)
+```
+
+```{r}
+sort(unique(lc_pts_NAD83_wgs84$recent_burn))
+```
+```{r}
+ lc_pts_NAD83_wgs84 %>% 
+  filter(official_fire_scar %in% c("Bearnose Hill", "Chitanana", "Douglas", "Frozen Calf", "U.S. Creek")) %>%
+  group_by(official_fire_scar, recent_burn) %>% 
+  summarise(n = n())
+```
+
+```{r}
+lc_pts_NAD83_wgs84 %>% 
+  distinct(official_fire_scar, recent_burn) %>% 
+  group_by(recent_burn) %>% 
+  summarise(fireNames = paste(unique(official_fire_scar), collapse = ", "))
+```
+
+
+```{r}
+LC_Plot_Final_pts = LC_Plot_Final %>% 
+  dplyr::select(row_id, site, plot, unique_site_id, latitude, longitude, recent_burn) %>%
+  unite(siteID, c("site", "plot", "unique_site_id")) %>%
+  df_to_sf() %>% 
+  st_transform(., crs = 4326) %>%
+  mutate(dataset = "LC_Plot_Final")  %>%
+  rename(burnYr = recent_burn) %>%
+  mutate(burnYr = as.character(burnYr))
+```
+
+```{r}
+
+LCC_Site_Data_pts = LCC_Site_Data %>% 
+  dplyr::select(row_id, site, latitude, longitude, year_of_burn) %>%
+  unite(siteID, c("site", "row_id"), sep = "_", remove = FALSE)  %>% 
+  drop_na(latitude, longitude) %>%
+  df_to_sf() %>% 
+  st_transform(., crs = 4326) %>%
+  mutate(dataset = "LCC_Site_Data") %>%
+  rename(burnYr = year_of_burn) %>%
+  mutate(burnYr = as.character(burnYr))
+```
+
+```{r}
+LC_Plot_Final_pts
+LCC_Site_Data_pts
+```
+
+
+
+# Save
+
+```{r eval=FALSE, include=FALSE}
+st_write(LC_Plot_Final_pts, "../outputs/LCC_cleaned/points/LC_Plot_ptsWGS84_2025-04-02.shp", driver="ESRI Shapefile")
+```
+
+```{r eval=FALSE, include=FALSE}
+st_write(LCC_Site_Data_pts, "../outputs/LCC_cleaned/points/LCC_Site_ptsWGS84_2025-04-02.shp", driver="ESRI Shapefile")
+```
+
+## Filter reburn data
+
+Reburn data for FiSL biophysical properties research
+
+```{r}
+reburnData = LC_Plot_Final %>% 
+  dplyr::select(row_id, fire, site, plot, unique_site_id, latitude, longitude, recent_burn, second_burn, triple_burn, reburn_age_original_estimate, reburn_class_final)
+```
+
+```{r}
+write.csv(reburnData, "../outputs/LCC_cleaned/csv/LC_Plot_ReburnData_2025-04-02.csv")
+```
+
+## Climate NA data formating
+
+```{r}
+lcc %>% group_by(researcher, study_area, site) %>% summarise(n=n())
+```
+
+```{r}
+climateNA_lc = lc %>% 
+  dplyr::select(row_id, site, plot, unique_site_id, latitude, longitude) %>%
+  unite(siteID, c("site", "plot", "unique_site_id")) %>%
+  rename(id1 = row_id, id2 = siteID, lat = latitude, long = longitude) 
+
+```
+
+```{r}
+climateNA_lcc  = lcc %>% 
+  filter(study_area != "Sweden") %>%
+  dplyr::select(row_id, researcher, site, latitude, longitude) %>%
+  unite(siteID, c("site", "row_id"), sep = "_", remove = FALSE) %>%
+  rename(id1 = row_id, id2 = siteID, lat = latitude, long = longitude) %>%
+  select(id1, id2, lat, long)
+```
+
+```{r}
+write.csv(climateNA_lc, "../outputs/LCC_cleaned/csv/climateNA_LC_2025-04-15.csv", row.names = FALSE)
+write.csv(climateNA_lcc, "../outputs/LCC_cleaned/csv/climateNA_LCC_2025-04-15.csv", row.names = FALSE)
+```
+

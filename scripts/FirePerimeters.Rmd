@@ -1,0 +1,170 @@
+---
+title: "Fire perimeters"
+author: "Anna Talucci"
+date: "2025-04-03"
+output: html_document
+---
+
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+
+
+
+# Packages
+
+```{r}
+library(tidyverse)  # Data manipulation & visualization
+library(sf)
+library(mapview)
+```
+
+```{r}
+gdb_path <- "../data/AlaskaFireHistory_Polygons.gdb"
+st_layers(gdb_path)
+```
+
+```{r}
+akgdb <- sf::st_read("../data/AlaskaFireHistory_Polygons.gdb", layer = "AK_fire_location_polygons_AKAlbersNAD83")
+
+```
+
+
+```{r}
+fires = st_read("../data/firePerimeters/mtbs_perimeter_data/mtbs_perims_DD.shp", "mtbs_perims_DD")
+```
+ [1] "Aggie Creek"     "Bearnose Hill"   "Tractor Trail 2" "Bitzshitini"     "Chitanana"      
+ [6] "Douglas"         "Dragon"          "Dry Creek"       "Frozen Calf"     "Isom Creek"     
+[11] "Kilolitna River" "Hess Creek"      "Baker"           "Marr"            "MM 125"         
+[16] "Little Mud"      "Preacher Creek"  "Shovel Creek"    "Snohomish"       "Hay Slough"     
+[21] "U.S. Creek"      "Cripple Creek"  
+
+## points
+
+## points
+
+```{r}
+gpkg_files <- list.files("../outputs/LCC_cleaned/points/geopackage", pattern='.gpkg$', full.names=TRUE)
+```
+
+```{r}
+gpkg_files
+```
+
+```{r}
+(lc_pts = st_read(gpkg_files[1]) )
+
+(lcc_pts = st_read(gpkg_files[2]) )
+
+
+```
+
+# View data
+
+```{r}
+akgdb
+```
+
+
+# View data
+
+```{r}
+sort(unique(lcc_pts$year_of_burn))
+```
+
+```{r}
+lcc_pts %>% filter(year_of_burn == "2006")
+```
+
+```{r}
+lcc_pts %>% filter(researcher == "Hayes") 
+```
+
+```{r}
+lc_pts
+```
+
+
+```{r}
+sort(unique(lc_pts$official_fire_scar))
+```
+
+# Filter by fire names
+
+```{r}
+target_missing = c("Bearnose Hill", "Chitanana", "Douglas", "Frozen Calf", "U. S. Creek")
+```
+
+
+
+```{r}
+( missing_fires_lc = lc_pts %>% filter(official_fire_scar %in% target_missing) )
+```
+
+```{r}
+sort(unique(missing_fires_lc$recent_burn))
+```
+
+```{r}
+(missing2015 = missing_fires_lc %>% filter(recent_burn==2015))
+(missing2019 = missing_fires_lc %>% filter(recent_burn==2019))
+(missing2022 = missing_fires_lc %>% filter(recent_burn==2022))
+```
+```{r}
+target_names_lc = c("Aggie Creek", "Tractor Trail 2", "Bitzshitini", "Dragon", "Dry Creek", "Isom Creek", "Kilolitna River", "Hess Creek", "Baker", "Marr", "MM 125", "Little Mud", "Preacher Creek", "Shovel Creek", "Snohomish", "Hay Slough", "Cripple Creek", "U. S. Creek", "Bearnose Hill ",  "Frozen Calf ", "Chitanana ", "Douglas ")
+```
+
+```{r}
+target_years_lc = c(2015, 2018, 2019, 2020, 2021, 2022)
+```
+
+```{r}
+akgdb %>% filter(FIREYEAR %in% target_years_lc) %>% filter(NAME %in% target_names_lc)
+```
+2015, 2018, 2019, 2020, 2021, 2022
+```{r}
+( akYrs2015 = akgdb %>% filter(FIREYEAR ==2015) %>% st_transform(., crs=4326) )
+( akYrs2019 = akgdb %>% filter(FIREYEAR ==2019) %>% st_transform(., crs=4326) )
+( akYrs2022 = akgdb %>% filter(FIREYEAR ==2022) %>% st_transform(., crs=4326) )
+( akYrs2004 = akgdb %>% filter(FIREYEAR ==2004) %>% st_transform(., crs=4326) )
+( akYrs2006 = akgdb %>% filter(FIREYEAR ==2006) %>% st_transform(., crs=4326) )
+```
+
+```{r}
+sort(unique(akYrs2022$NAME))
+```
+
+```{r}
+(hayes = lcc_pts %>% filter(researcher == "Hayes") )
+```
+# View Map
+
+```{r}
+mapview(akYrs2015)
+```
+
+
+row_id=118 check lat lon
+```{r}
+mapview(akYrs2022, label = "NAME") + mapview(missing2022, label = "row_id")
+```
+
+```{r}
+mapview(akYrs2004, label = "NAME")  + mapview(hayes)
+```
+
+# view data point
+
+```{r}
+lc_pts %>% 
+  st_drop_geometry() %>% 
+  filter(official_fire_scar=="Chitanana") %>%
+  relocate(row_id, latitude, longitude)
+```
+
+
+

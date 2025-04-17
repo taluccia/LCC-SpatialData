@@ -1,0 +1,35 @@
+---
+title: "QAQC WorldClim2 data"
+author: "Anna Talucci"
+date: "2025-04-16"
+output: html_document
+---
+
+
+# Overview
+
+# Packages
+
+```{r}
+library(tidyverse)
+library(skimr)
+```
+
+# Data
+
+```{r}
+lc = read_csv("../outputs/extractSpatialData/lc_worldclim2_monthlyClimate_2025-04-17.csv")  
+lcc = read_csv("../outputs/extractSpatialData/lcc_worldclim2_monthlyClimate_2025-04-17.csv")   
+```
+
+# View Data
+
+```{r}
+glimpse(lc)
+glimpse(lcc)
+```
+
+```{r}
+skimr::skim(lc)
+skimr::skim(lcc)
+```
