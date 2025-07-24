@@ -280,6 +280,15 @@ summary(LC_Plot_Final)
 summary(LCC_Site_Data)
 ```
 
+
+```{r}
+LC_Plot_Final %>% group_by(recent_burn) %>% summarize(n_sites = n_distinct(unique_site_id))
+```
+
+```{r}
+LCC_Site_Data %>% group_by(year_of_burn) %>% summarize(n_sites = n_distinct(site))
+```
+
 # Write
 
 ```{r}
