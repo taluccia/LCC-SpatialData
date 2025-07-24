@@ -1,0 +1,151 @@
+---
+title: "organize gfwed"
+author: "Anna Talucci"
+date: "2025-04-27"
+output: html_document
+---
+
+
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Combine spatial data in to single dataframe
+
+
+color help
+http://vrl.cs.brown.edu/color
+
+# Packages
+
+```{r}
+library(tidyverse)
+```
+
+
+# Data
+
+## FWI
+
+```{r}
+gfwed <- list.files(path="../data/gfwed_2025-04-29", pattern='*.csv', full.names = TRUE) %>% 
+ map(~ read_csv(.x, col_types = cols(siteplot = col_character()))) %>% 
+  bind_rows() %>%
+  dplyr::select(row_id, PI, siteplot, date, dob, DSR, rh, t, vpd, wspeed)
+
+```
+
+```{r}
+names(gfwed)
+```
+
+```{r}
+gfwed
+```
+
+
+```{r}
+sort(unique(gfwed$PI))
+```
+
+```{r}
+write_csv(gfwed, "../outputs/LCC_cleaned/csv/gfwed_2025-04-30.csv")
+```
+
+# Figures 
+
+## Plot themes
+
+```{r}
+comp_theme = theme_bw() + theme(legend.position = "bottom") +  
+  theme(panel.grid.major = element_blank()) +
+    theme(axis.title.y = element_text(size = 11, hjust = 0.5, vjust = 1.1),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"))
+```
+
+
+## fwi
+
+```{r}
+( fwi_plot = ggplot(fwi, aes(x=PI, y=fire_weather_index, color = PI)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#7cd3eb', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#a5e841', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Fire Weather Index") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-24_fwi.png", plot = fwi_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
+
+
+## keetch_byram_drought_index
+keetch_byram_drought_index 0 to 800. A value of 0 indicates no moisture deficit, while 800 represents the maximum possible drought. 
+```{r}
+( drought_plot = ggplot(fwi, aes(x=PI, y=keetch_byram_drought_index, color = PI)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#7cd3eb', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#a5e841', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Keetch Byram drought index") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-24_drought.png", plot = drought_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
+
+
+
+
+## fine_fuel_moisture_code
+
+```{r}
+( ffm_plot = ggplot(fwi, aes(x=PI, y=fine_fuel_moisture_code, color = PI)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#7cd3eb', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#a5e841', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Fine fuel moisture code") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-24_finFuelMoisture.png", plot = ffm_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```

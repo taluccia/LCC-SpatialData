@@ -1,0 +1,312 @@
+---
+title: "Stand Age Data"
+author: "Anna Talucci"
+date: "2025-04-21"
+output: html_document
+---
+
+
+# Overview
+
+
+# Packages
+
+```{r}
+library(sf)
+library(terra)
+library(tidyverse)
+```
+
+# Data
+
+## Points
+
+
+
+```{r}
+gpkg_files <- list.files("../outputs/LCC_cleaned/points/geopackage", pattern='.gpkg$', full.names=TRUE)
+```
+
+```{r}
+gpkg_files
+```
+
+```{r}
+lc_pts = st_read(gpkg_files[1]) %>% mutate(ID=row_number())
+
+lcc_pts = st_read(gpkg_files[2]) 
+
+
+```
+
+## rasters
+
+```{r}
+lc_raster_list <- list.files("../data/forestAge/lc", pattern='.tif$', full.names=TRUE)
+```
+
+```{r}
+lc_raster_list
+```
+
+```{r}
+r1 = rast(lc_raster_list[1])
+r1
+```
+
+```{r}
+lcc_raster_list <- list.files("../data/forestAge/lcc", pattern='.tif$', full.names=TRUE)
+```
+
+```{r}
+lcc_raster_list
+```
+
+```{r}
+( sweden_list = lcc_raster_list[c(1:8)] )
+( nwt_list = lcc_raster_list[c(16:27)] )
+( westquebec_quebec_list = lcc_raster_list[c(12:15)] )
+( eastquebec_list = lcc_raster_list[c(10:11)] )
+
+```
+ ## individual rasters
+```{r}
+( aktundra_raster = rast(lcc_raster_list[31]) )
+( kenai_raster = rast(lcc_raster_list[30]) )
+( alaska_raster = rast(lcc_raster_list[29]) )
+( yukon_raster = rast(lcc_raster_list[28]) )
+( nl_raster = rast(lcc_raster_list[9]) )
+```
+# Mosaic Rasters
+
+```{r}
+# Function to read and mosaic rasters
+mosaic_rasters <- function(raster_files, fun = "min") {
+  # Read all raster files into SpatRaster objects
+  rasters <- lapply(raster_files, rast)
+  
+  # Mosaic rasters together using specified function (e.g., "mean", "min", "max", "sum")
+  mosaic <- do.call(mosaic, c(rasters, fun = match.fun(fun)))
+  
+  return(mosaic)
+}
+```
+
+```{r}
+lc_mosaicked_raster <- mosaic_rasters(lc_raster_list, fun = "min")
+```
+
+```{r}
+sweden_mosaicked_raster <- mosaic_rasters(sweden_list, fun = "min")
+nwt_mosaicked_raster <- mosaic_rasters(nwt_list, fun = "min")
+westquebec_quebec_mosaicked_raster <- mosaic_rasters(westquebec_quebec_list, fun = "min")
+eastquebec_mosaicked_raster <- mosaic_rasters(eastquebec_list, fun = "min")
+```
+# Split LCC points by study area
+
+```{r}
+unique(lcc_pts$study_area)
+```
+
+```{r}
+sweden_pts = lcc_pts %>% filter(study_area== "Sweden") %>% mutate(ID=row_number())
+kenai_pts = lcc_pts %>% filter(study_area== "Kenai") %>% mutate(ID=row_number())
+yukon_pts = lcc_pts %>% filter(study_area== "Yukon") %>% mutate(ID=row_number()) 
+alaska_pts = lcc_pts %>% filter(study_area== "Alaska") %>% mutate(ID=row_number())
+nwt_pts = lcc_pts %>% filter(study_area== "NWT") %>% mutate(ID=row_number())
+eastquebec_pts = lcc_pts %>% filter(study_area == "Eastern Quebec") %>% mutate(ID=row_number())
+westquebec_quebec_pts = lcc_pts %>% filter(study_area%in% c("Western Quebec", "Quebec")) %>% mutate(ID=row_number())
+nl_pts = lcc_pts %>% filter(study_area== "NL" ) %>% mutate(ID=row_number())
+aktundra_pts = lcc_pts %>% filter(study_area== "AK tundra" ) %>% mutate(ID=row_number())
+
+
+```
+
+```{r}
+alaska_pts
+```
+# View Data
+
+```{r}
+plot(lc_mosaicked_raster)
+```
+
+```{r}
+plot(sweden_mosaicked_raster)
+```
+
+```{r}
+plot(nwt_mosaicked_raster)
+```
+
+```{r}
+# -144.9983 ymin: 65.56454 xmax: -144.9213 ymax: 65.59358
+plot(alaska_raster)
+plot(st_geometry(alaska_pts), add=TRUE)
+```
+
+```{r}
+plot(westquebec_quebec_mosaicked_raster)
+plot(st_geometry(westquebec_quebec_pts), add=TRUE)
+```
+
+```{r}
+plot(eastquebec_mosaicked_raster)
+plot(st_geometry(eastquebec_pts), add=TRUE)
+```
+
+
+# POINTS TO SPAT VECTOR
+
+```{r}
+sv_lc_pts = vect(lc_pts)
+sv_sweden_pts = vect(sweden_pts)
+sv_kenai_pts = vect(kenai_pts)
+sv_yukon_pts = vect(yukon_pts)
+sv_alaska_pts = vect(alaska_pts)
+sv_nwt_pts = vect(nwt_pts)
+sv_eastquebec_pts = vect(eastquebec_pts)
+sv_westquebec_quebec_pts = vect(westquebec_quebec_pts)
+sv_nl_pts = vect(nl_pts)
+sv_aktundra_pts = vect(aktundra_pts)
+```
+
+# Extract 
+
+## LC
+
+```{r}
+lc_extract = terra::extract(lc_mosaicked_raster, sv_lc_pts, xy=TRUE)
+```
+
+```{r}
+lc_extract
+```
+
+## LCC
+
+```{r}
+sweden_extract = terra::extract(sweden_mosaicked_raster, sv_sweden_pts, xy=TRUE)
+nwt_extract = terra::extract(nwt_mosaicked_raster, sv_nwt_pts, xy=TRUE)
+westquebec_quebec_extract = terra::extract(westquebec_quebec_mosaicked_raster, sv_eastquebec_pts, xy=TRUE)
+eastquebec_extract = terra::extract(eastquebec_mosaicked_raster, sv_westquebec_quebec_pts, xy=TRUE)
+```
+
+```{r}
+kenai_extract = terra::extract(kenai_raster, sv_kenai_pts, xy=TRUE)
+yukon_extract = terra::extract(yukon_raster, sv_yukon_pts, xy=TRUE)
+alaska_extract = terra::extract(alaska_raster, sv_alaska_pts, xy=TRUE)
+nl_extract = terra::extract(nl_raster, sv_nl_pts, xy=TRUE)
+aktundra_extract = terra::extract(aktundra_raster, sv_aktundra_pts, xy=TRUE)
+```
+
+```{r}
+sweden_extract
+```
+
+# Points as DF
+
+```{r}
+points_as_df = function(pts){
+  pts %>%
+    st_drop_geometry()
+}
+```
+
+```{r}
+( lc_df = lc_pts %>% points_as_df() )
+```
+
+
+```{r}
+( sweden_df = sweden_pts %>% points_as_df() )
+( kenai_df = kenai_pts %>% points_as_df() )
+( yukon_df = yukon_pts %>% points_as_df() )
+( alaska_df = alaska_pts %>% points_as_df() )
+( nwt_df = nwt_pts %>% points_as_df() )
+( eastquebec_df = eastquebec_pts %>% points_as_df() )
+( westquebec_quebec_df = westquebec_quebec_pts %>% points_as_df() )
+( nl_df = nl_pts %>% points_as_df() )
+( aktundra_df = aktundra_pts %>% points_as_df() )
+```
+
+# Join extract to df
+
+```{r}
+( lc_join = lc_df %>% full_join(., lc_extract, by=c("ID")) %>% rename(stand_age = `142W_65N_forest_age`
+))
+```
+
+
+
+```{r}
+( sweden_join = sweden_df %>% full_join(., sweden_extract, by=c("ID")) %>% rename(forest_age = `012E_62N_forest_age`
+) )
+```
+
+```{r}
+( kenai_join = kenai_df %>% 
+    full_join(., kenai_extract, by=c("ID")) %>% rename(forest_age = `152W_62N_forest_age`
+)
+)
+```
+
+```{r}
+( yukon_join = yukon_df %>% 
+    full_join(., yukon_extract, by=c("ID")) %>% rename(forest_age = `140W_68N_forest_age`)
+)
+```
+
+```{r}
+( alaska_join = alaska_df %>% 
+    full_join(., alaska_extract, by=c("ID")) %>% rename(forest_age = `145W_68N_forest_age`)
+)
+```
+
+```{r}
+( nwt_join = nwt_df %>% 
+    full_join(., nwt_extract, by=c("ID")) %>% rename(forest_age = `122W_62N_forest_age`)
+)
+```
+```{r}
+( eastquebec_join = eastquebec_df %>% 
+    full_join(., eastquebec_extract, by=c("ID")) %>% rename(forest_age = `070W_50N_forest_age`)
+)
+```
+```{r}
+( westquebec_quebec_join = westquebec_quebec_df %>% 
+    full_join(., westquebec_quebec_extract, by=c("ID")) %>% rename(forest_age = `078W_50N_forest_age`)
+)
+```
+
+```{r}
+( nl_join = nl_df %>% 
+    full_join(., nl_extract, by=c("ID")) %>% rename(forest_age = `058W_50N_forest_age`)
+)
+```
+```{r}
+( aktundra_join = aktundra_df %>% 
+    full_join(., aktundra_extract, by=c("ID")) %>% rename(forest_age = `165W_62N_forest_age`)
+)
+```
+
+# Recombine LCC data into one dataframe
+
+```{r}
+lcc_forest_age = bind_rows(aktundra_join, nl_join, westquebec_quebec_join, eastquebec_join, nwt_join, alaska_join, yukon_join, kenai_join, sweden_join)
+```
+
+# Select Stand age and fire year
+
+```{r}
+lc_join %>% select(fire:triple_age, stand_age)
+```
+
+# save file
+```{r}
+write_csv(lcc_forest_age, "../outputs/LCC_cleaned/csv/LCC_stand_age_2025-04-22.csv")
+```
+
+```{r}
+write_csv(lc_join, "../outputs/LCC_cleaned/csv/LC_stand_age_2025-04-22.csv")
+```

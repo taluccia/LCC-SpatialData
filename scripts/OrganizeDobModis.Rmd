@@ -1,0 +1,191 @@
+---
+title: "Modis Day of Burn"
+author: "Anna Talucci"
+date: "2025-04-17"
+output: html_document
+---
+
+# Overview
+
+Take Day of Burn day of year day and convert to YYYY-MM-DD for EE script for extracting FWI.
+
+Input data is from Earth Engine output
+
+# packages
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+# Data
+
+## point data
+
+```{r}
+lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/lc_pts_NAD83_wgs84_2025-04-24.shp", "lc_pts_NAD83_wgs84_2025-04-24")
+```
+
+```{r}
+lcc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/lcc_pts_wgs84_2025-04-24.shp", "lcc_pts_wgs84_2025-04-24")
+```
+
+## Day of bun
+
+```{r}
+lc_files <- list.files("../data/modisDob/lc", pattern='.csv$', full.names=TRUE)
+```
+
+```{r}
+lcc_files <- list.files("../data/modisDob/lcc", pattern='.csv$', full.names=TRUE)
+```
+
+```{r}
+lc_files
+```
+
+```{r}
+lcc_files
+```
+
+# Read into dataframe
+
+```{r}
+lc_df <- map_dfr(lc_files, readr::read_csv, show_col_types = FALSE)
+```
+
+
+
+```{r}
+lcc_df <- map_dfr(lcc_files, readr::read_csv, show_col_types = FALSE)
+```
+
+```{r}
+lcc_df
+```
+
+```{r}
+( lc_dob = lc_df %>% mutate(date= as.Date(BurnDate-1, origin=paste0(fireYr, "-01-01")), 
+              month= strftime(date, "%m"), 
+              day=strftime(date,"%d"))  %>%
+  rename(dob=BurnDate) %>%
+  relocate(row_id, date) %>%
+  dplyr::select(row_id, dob, date)
+  
+)
+```
+```{r}
+lcc_df
+```
+
+```{r}
+( lcc_dob = lcc_df %>% mutate(date= as.Date(BurnDate-1, origin=paste0(fireYr, "-01-01")), 
+              month= strftime(date, "%m"), 
+              day=strftime(date,"%d"))  %>%
+  rename(dob=BurnDate) %>%
+  relocate(row_id, date) %>%
+  dplyr::select(row_id, dob, date)
+  
+)
+```
+
+# Join to points
+
+```{r}
+( lc_dob_pts = lc_pts %>% 
+    full_join(., lc_dob, by="row_id") %>%
+    mutate(date = as.character(date)))
+```
+
+```{r}
+( lcc_dob_pts = lcc_pts %>% 
+    full_join(., lcc_dob, by="row_id") %>% 
+    mutate(date = as.character(date)))
+```
+
+```{r}
+glimpse(lc_dob_pts)
+```
+
+# Look at dob NA
+
+```{r}
+missing_dob = lc_dob_pts %>% filter(is.na(dob))
+```
+
+```{r}
+missing_dob
+unique(missing_dob$PI)
+sort(unique(missing_dob$fireYr))
+```
+```{r}
+lcc_missing_dob = lcc_dob_pts %>% filter(is.na(dob))
+```
+
+```{r}
+lcc_missing_dob
+unique(lcc_missing_dob$PI)
+sort(unique(lcc_missing_dob$fireYr))
+```
+
+```{r}
+lcc_missing_dob %>% filter(PI=="Parisien")
+```
+
+```{r}
+(lc_drop_na = lc_dob_pts %>% filter(!is.na(dob)))
+```
+
+```{r}
+(lcc_drop_na =lcc_dob_pts %>% filter(!is.na(dob)))
+```
+
+# look at fire years
+
+```{r}
+sort(unique(lc_dob_pts$fireYr))
+```
+
+```{r}
+sort(unique(lcc_dob_pts$fireYr))
+```
+
+```{r}
+lcc_drop_na %>% group_by(fireYr) %>% summarise()
+```
+```{r}
+lcc_dob_pts
+lc_dob_pts
+```
+
+# Print calendar dates for EE
+
+Get calendar date with quotes and separated by comma to add to GEE code. Copy printed list into EE code `BurnDateFWIExtract`
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lcc_dob_pts$date))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lc_dob_pts$date))), collapse = ", "))
+```
+
+# save all points
+
+```{r eval=FALSE, include=FALSE}
+st_write(lc_dob_pts, "../outputs/LCC_cleaned/points/shapefiles/lc_pts_dob_allpts_2025-04-29.shp", driver="ESRI Shapefile")
+```
+
+```{r eval=FALSE, include=FALSE}
+st_write(lcc_dob_pts, "../outputs/LCC_cleaned/points/shapefiles/lcc_pts_dob_allpts_2025-04-29.shp", driver="ESRI Shapefile")
+```
+
+# save shapefile for EE
+
+```{r eval=FALSE, include=FALSE}
+st_write(lc_drop_na, "../outputs/LCC_cleaned/points/shapefiles/lc_pts_dob_2025-04-24.shp", driver="ESRI Shapefile")
+```
+
+```{r eval=FALSE, include=FALSE}
+st_write(lcc_drop_na, "../outputs/LCC_cleaned/points/shapefiles/lcc_pts_dob_2025-04-24.shp", driver="ESRI Shapefile")
+```

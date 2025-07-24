@@ -1,0 +1,29 @@
+---
+title: "Move files"
+author: "Anna Talucci"
+date: "2025-04-28"
+output: html_document
+---
+
+# Set the paths
+```{r}
+source_folder <- "../data/fireAtlas/2022/snapshot"
+destination_folder <- "../data/fireAtlas/flFiles/2022"
+```
+
+# List all files in source folder
+
+```{r}
+files <- list.files(path = source_folder, full.names = TRUE)
+```
+
+# Filter files containing "_FL" in their name
+```{r}
+files_to_move <- files[grepl("_FL", basename(files))]
+```
+
+# Move the files
+```{r}
+file.rename(from = files_to_move,
+            to = file.path(destination_folder, basename(files_to_move)))
+```

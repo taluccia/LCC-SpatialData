@@ -1,0 +1,277 @@
+---
+title: "Organize Combustion Model Data"
+author: "Anna Talucci"
+date: "2025-04-27"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+
+# Overview
+ LCC & LC clean and combine data for combustion model.
+ 
+ Create one data frame with all sampled points and variables. The data frame will be subset in the model script.
+
+# Packages
+
+```{r}
+library(tidyverse)
+```
+
+# Data
+
+```{r}
+pts = st_read("../outputs/LCC_cleaned/points/shapefiles/lc_lcc_2025-04-24.shp", "lc_lcc_2025-04-24")
+```
+```{r}
+( sites = pts %>% st_drop_geometry() )
+```
+## FWI
+
+```{r}
+gfwed =read_csv("../outputs/LCC_cleaned/csv/gfwed_2025-04-30.csv")
+```
+```{r}
+fwi = read_csv("../outputs/LCC_cleaned/csv/fwi_2025-04-29.csv")
+```
+
+```{r}
+( fwi = fwi %>% 
+    rename(BUI = build_up_index, DC= drought_code, DMC = duff_moisture_code, DOB_lst = dob, FFMC = fine_fuel_moisture_code, FWI = fire_weather_index, ISI = initial_fire_spread_index) %>%
+    dplyr::select(row_id, siteplot, date, DOB_lst, BUI, DC, DMC, FFMC, FWI, ISI ))
+```
+ [1] "BUI"               "DC"                "DMC"               "DOB_lst"          
+ [5] "DSR"               "Date"              "FFMC"              "FWI"              
+ [9] "ID1"               "ID2"               "ISI"               "Relative.humidity"
+[13] "Temperature"       "VPD"               "Wind.speed"  
+
+```{r}
+gfwed = gfwed %>% rename(Relative.humidity = rh, Temperature=t, VPD=vpd, Wind.speed = wspeed)
+```
+
+
+**NOTE Current FWI DATA is missing RH, Temp, VPD, Wind speed, and DSR.**
+
+```{r}
+fwi 
+```
+
+```{r}
+min(fwi$FWI)
+max(fwi$FWI)
+```
+
+###Join
+
+```{r}
+( fwi1 = full_join(fwi, gfwed, by = c("row_id", "siteplot"))
+)
+```
+
+
+## Landsat
+### indices
+```{r}
+ls_indices =  list.files(path="../data/landsatIndices",pattern='*.csv', full.names = TRUE) %>% 
+  purrr::map(., read_csv) %>% 
+  map_dfr(., ~ .x ) %>%
+  bind_rows() %>%
+  dplyr::select(-`system:index`, -`.geo`) %>%
+  rename(NDVI=dNDVI, NDII=dNDII)
+```
+```{r}
+ls_indices
+```
+
+### TCT
+
+```{r}
+tct =  list.files(path="../data/TCT",pattern='*.csv', full.names = TRUE) %>% 
+  purrr::map(., read_csv) %>% 
+  map_dfr(., ~ .x ) %>%
+  bind_rows() %>%
+  dplyr::select(row_id, siteplot, wetness, greenness, brightness) 
+```
+
+```{r}
+tct
+```
+
+### Tree Cover
+
+```{r}
+treecover =  list.files(path="../data/treeCover",pattern='*.csv', full.names = TRUE) %>% 
+  purrr::map(., read_csv) %>% 
+  map_dfr(., ~ .x ) %>%
+  bind_rows() %>%
+  dplyr::select(row_id, siteplot, tree_canopy_cover) %>%
+  rename(Tree.cover=tree_canopy_cover) 
+```
+
+```{r}
+treecover 
+```
+
+###Join
+
+```{r}
+( landsat = full_join(ls_indices, tct, by = c("row_id", "siteplot")) %>%
+    full_join(., treecover, by = c("row_id", "siteplot")))
+```
+
+```{r}
+sort(unique(landsat$PI))
+```
+## Static
+
+```{r}
+terrain = read_csv("../data/static/staticTerrain.csv")
+soil = read_csv("../data/static/staticSoil250_LCC.csv")
+soilPfi = read_csv("../data/static/staticSoilPFI_LCC.csv")
+sveg = read_csv("../data/static/static1Vegetation_LCC.csv")
+```
+
+```{r}
+terrain = terrain %>%
+  dplyr::select(-`system:index`, -`.geo`) 
+soil = soil %>%
+  dplyr::select(row_id, siteplot, BD_30, Clay_30, SOC_30, Sand_30, Silt_30, pH_30)
+soilPfi = soilPfi %>%
+  dplyr::select(row_id, siteplot, PFI)
+sveg = sveg %>%
+  dplyr::select(row_id, siteplot, BS, DEC, GRSH, JP, NV, OCON, PI, WS)
+```
+
+
+
+### Join
+
+```{r}
+( static = full_join(terrain, sveg, by = c("row_id", "siteplot")) %>%
+    full_join(., soil, by = c("row_id", "siteplot")) %>%
+    full_join(., soilPfi, by = c("row_id", "siteplot"))  %>%
+    select(-contains(".y")) %>%
+    rename_at(vars(contains(".x")), ~str_remove(., ".x"))
+  )
+```
+
+```{r}
+sort(unique(static$PI))
+```
+
+
+
+
+## Climate NA
+
+```{r}
+lc_1971 = read_csv("../data/climateNA/climateNA_LC_2025-04-17_Normal_1971_2000MSY.csv")
+lc_1991 = read_csv("../data/climateNA/climateNA_LC_2025-04-17_Normal_1991_2020MSY.csv")
+lcc_1971 = read_csv("../data/climateNA/climateNA_LCC_2025-04-17_Normal_1971_2000MSY.csv")
+lcc_1991 = read_csv("../data/climateNA/climateNA_LCC_2025-04-17_Normal_1991_2020MSY.csv")
+```
+  
+```{r}
+( climateNa_1971 = bind_rows(lc_1971, lcc_1971) %>% 
+  dplyr::select(id1, id2, AHM, CMD, CMD_sm, DD_0, DD_18, DD5, DD5_sm, EMT, Eref, Eref_sm, EXT, MAP, PAS, Rad_sm, SHM, Tmax_sm, Tmin_sm) %>%
+  rename(ID1=id1, ID2=id2, CNA_AHM=AHM, CNA_CMD=CMD, CNA_CMD_5_8 = CMD_sm, CNA_DD_0=DD_0, CNA_DD_18=DD_18, CNA_DD5=DD5, CNA_DD5_5_8=DD5_sm, CNA_EMT=EMT, CNA_Eref=Eref, CNA_Eref_5_8=Eref_sm, CNA_EXT=EXT, CNA_MAP=MAP, CNA_PAS=PAS, CNA_Rad_5_8=Rad_sm, CNA_SHM=SHM, CNA_Tmax_5_8=Tmax_sm, CNA_Tmin_5_8=Tmin_sm) %>%
+    rename(row_id = ID1)
+)
+```
+
+```{r}
+( cna = sites %>% full_join(climateNa_1971, by="row_id")
+)
+```
+
+```{r}
+sort(unique(cna$PI))
+```
+
+```{r}
+cna %>% filter(if_any(everything(), is.na)) 
+```
+
+# Check number of IDs
+
+```{r}
+length(unique(landsat$row_id))
+length(unique(static$row_id))
+length(unique(fwi$row_id))
+length(unique(climateNa_1971$row_id))
+```
+
+
+
+
+
+# Combine to Datasets
+
+```{r}
+( allData = full_join(static, landsat, by = c("row_id", "siteplot")) %>%
+  full_join(., fwi1, by = c("row_id", "siteplot")) %>%
+   full_join(., cna, by = c("row_id", "siteplot")) %>%
+    select(-contains(".y")) %>%
+    select(-c(45, 52:56)) %>%
+    
+    rename(PI=PI.x, area=area.x, fireYr=fireYr.x, lat=lat.x, lon=lon.x, proj=proj.x, date=date.x)
+)
+```
+
+
+```{r}
+allData %>% filter(PI=="Saperstein")
+```
+
+# Fill in stand age
+
+```{r}
+( allData1 = allData %>%
+mutate(Tree.cover = case_when(
+    is.na(Tree.cover) & PI == "Diaz-Veraverbeke" ~ 0,
+    TRUE ~ Tree.cover  # keep existing value otherwise
+  )) %>% 
+  mutate(Tree.cover = case_when(
+    is.na(Tree.cover) & PI == "Hung and Natali" ~ 0,
+    TRUE ~ Tree.cover  # keep existing value otherwise
+  ))
+)
+
+```
+
+## Check NAs
+There are several NAs for the FWI Data
+
+```{r}
+allData[rowSums(is.na(allData)) > 0,]
+```
+
+```{r}
+( datawithNA = allData %>% filter(if_any(everything(), is.na)) )
+```
+```{r}
+write_csv(datawithNA, "../outputs/LCC_DataCombustionModelWithNA_2025-04-30.csv")
+```
+```{r}
+( naFree = allData %>% 
+    drop_na() )
+```
+
+```{r}
+
+naFree %>% group_by(fireYr, PI) %>% summarise(n = n())
+
+```
+
+
+# Write to csv
+
+```{r}
+write_csv(allData1, "../outputs/LCC_DataCombustionModel_2025-04-30.csv")
+```
+
+
+**THE END**

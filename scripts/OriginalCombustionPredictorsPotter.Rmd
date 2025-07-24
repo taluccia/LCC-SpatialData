@@ -1,0 +1,70 @@
+---
+title: "Original Combustion Predictors"
+author: "Anna Talucci"
+date: "2025-07-02"
+output: html_document
+---
+
+# Overview
+
+Combine CSV files at project level for combustion model and for day of burn data.
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+
+# Data 
+
+```{r}
+
+org = read_csv("../data/combustion_predictors/all_predictors.csv")
+```
+
+```{r}
+( org_ee = org %>% 
+  select(id, project.name, latitude, longitude, DOB_lst, burn_year) %>%
+  mutate(DOB_lst = as.integer(DOB_lst)) %>%
+  mutate(date= as.Date(DOB_lst, origin=paste0(burn_year, "-01-01"))) %>%
+    rename(lat = latitude, lon = longitude, fireYr = burn_year) %>%
+    mutate(date = as.character(date)) %>%
+     mutate(fireYr = as.character(fireYr))
+)
+  
+```
+
+# Spatial points for ee
+
+```{r}
+df_to_sf_NAD83 <- function(x){
+  st_as_sf(x, coords = c("lon","lat"), crs = 4269, remove = FALSE) # X. Walker states crs epsg:3338 but it ends up in the ocean 
+}
+```
+
+## To points
+
+```{r}
+( org_pts_WGS84 = org_ee %>% 
+    df_to_sf_NAD83() %>%
+    st_transform(., crs = 4326)
+)
+```
+
+# Save points
+
+```{r eval=FALSE, include=FALSE}
+st_write(org_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/potterOriginal_pts_WGS84_2025-07-02.shp", driver="ESRI Shapefile")
+```
+
+# unique Dates
+
+```{r}
+sort(unique(org_pts_WGS84$date))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(org_pts_WGS84$date))), collapse = ", "))
+```

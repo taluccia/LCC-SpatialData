@@ -1,0 +1,201 @@
+---
+title: "Combustion Model"
+author: "Anna Talucci"
+date: "2025-04-27"
+output: html_document
+---
+
+
+# Overview
+
+Trouble shooting
+https://stackoverflow.com/questions/30097730/error-when-using-predict-on-a-randomforest-object-trained-with-carets-train
+
+# Library
+
+```{r}
+library(tidyverse)
+library(ranger)
+library(e1071)
+library(arrow)
+```
+# Models
+```{r}
+above_model <- readRDS("../models/aboveground.rds")
+below_model <- readRDS("../models/belowgrounds.rds")
+depth_model <- readRDS("../models/burn_depth.rds")
+```
+
+
+# Landscapes (20) Data
+
+```{r}
+data = read_csv("../outputs/LCC_DataCombustionModel_2025-04-30.csv")
+```
+
+```{r}
+head(data)
+```
+
+# Read in predictive data from stefano
+
+```{r}
+abovefed <- read_parquet("../data/TrainingDataFrame/abovefed_for_predict.parquet")
+head(abovefed)
+```
+
+# Training Data
+
+Original model training data from Stefano Potter. 
+
+```{r}
+above_train =  read.csv("../data/TrainingDataFrame/aboveground.csv", header=TRUE, sep = ",", strip.white = TRUE)
+```
+
+```{r}
+below_train =  read.csv("../data/TrainingDataFrame/belowground.csv", header=TRUE, sep = ",", strip.white = TRUE)
+```
+
+```{r}
+above_importance =  read.csv("../data/TrainingDataFrame/aboveground_importance.csv", header=TRUE, sep = ",", strip.white = TRUE)
+```
+
+```{r}
+below_importance =  read.csv("../data/TrainingDataFrame/belowground_importance.csv", header=TRUE, sep = ",", strip.white = TRUE)
+```
+
+```{r}
+above_importance
+below_importance
+```
+
+# Check with AboveFed Training data
+
+```{r}
+setdiff(names(abovefed), names(data))
+```
+
+```{r}
+setdiff(names(below_train), names(data))
+```
+
+```{r}
+setdiff(names(above_train), names(data))
+```
+
+```{r}
+setdiff(names(above_train), names(below_train))
+```
+```{r}
+setdiff(below_importance$Variables, names(data))
+```
+
+```{r}
+setdiff(above_importance$Variables, names(data))
+```
+
+```{r}
+below_importance
+```
+
+# Select only importance variables and add column for combustion for training
+
+Based on Stefano Potter's original model.
+
+```{r}
+above_train2 <- above_train %>% select(above_importance$Variables)
+below_train2 <- below_train %>% select(below_importance$Variables)
+above_train2$above.carbon.combusted = above_train$above.carbon.combusted
+below_train2$below.ground.carbon.combusted = below_train$below.ground.carbon.combusted
+```
+
+
+# Training models 
+
+Training each model with optimized parameters from Stefano Potter's ABOVEFed Model
+
+```{r}
+model_ranger_above <- ranger(above.carbon.combusted ~., data = above_train2, mtry = above_model$bestTune$mtry, splitrule = above_model$bestTune$splitrule, min.node.size = above_model$bestTune$min.node.size)
+```
+
+```{r}
+model_ranger_below <- ranger(below.ground.carbon.combusted ~., data = below_train2, mtry = below_model$bestTune$mtry, splitrule = below_model$bestTune$splitrule, min.node.size = below_model$bestTune$min.node.size)
+```
+
+```{r}
+rownames(below_model$importance)
+below_model$bestTune$splitrule
+below_model$bestTune$mtry
+below_model$bestTune$min.node.size
+```
+
+
+
+# Predict combustion with all independent variables
+
+These predictive models use all independent variables.
+
+## Drop NA
+
+Must remove NAs or it will not predict. 
+
+```{r}
+( df = data %>% drop_na() )
+```
+## select variables of interest
+
+Following importance variables from Stefano's original model. 
+
+```{r}
+( Above = df %>% select(above_importance$Variables) )
+( Below = df %>% select(below_importance$Variables) )
+```
+
+```{r}
+names(Above)
+names(Below)
+```
+## Aboveground preditions 
+
+```{r}
+pred_above = predict(model_ranger_above, Above)
+```
+
+```{r}
+AbovepredResults <- data.frame(predict(model_ranger_above, Above))
+AbovepredResults
+```
+
+```{r}
+above_pred <- cbind(df, AbovepredResults)
+above_pred
+```
+
+```{r eval=FALSE, include=FALSE}
+write_csv(above_pred, "../outputs/Predict/AbovegroundCombustion_2025-04-30.csv")
+```
+
+
+## Below Combustion
+ 
+```{r}
+pred_below = predict(model_ranger_below, Below)
+```
+
+```{r}
+BelowpredResults <- data.frame(predict(model_ranger_below, Below))
+
+```
+
+```{r}
+below_pred <- cbind(df, BelowpredResults)
+```
+
+```{r}
+below_pred
+```
+```{r eval=FALSE, include=FALSE}
+write_csv(below_pred, "../outputs/Predict/BelowgroundCombustion_2025-04-30.csv")
+```
+
+

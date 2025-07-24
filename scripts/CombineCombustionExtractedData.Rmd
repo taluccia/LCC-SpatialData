@@ -1,0 +1,384 @@
+---
+title: "combine combustion data by project (FISL, LC, LCC"
+author: "Anna Talucci"
+date: "2025-06-06"
+output: html_document
+---
+
+# Overview
+
+Combine CSV files at project level for combustion model and for day of burn data.
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+
+# Data 
+
+# Points
+
+```{r}
+lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/lc_pts_WGS84_2025-06-02.shp", "lc_pts_WGS84_2025-06-02")
+```
+
+```{r}
+lcc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/lcc_pts_WGS84_2025-06-02.shp", "lcc_pts_WGS84_2025-06-02")
+```
+
+```{r}
+fisl_pts =st_read("../outputs/LCC_cleaned/points/shapefiles/fisl_pts_WGS84_2025-06-02.shp", "fisl_pts_WGS84_2025-06-02")
+```
+
+# CSV
+
+## FISL
+
+```{r}
+fisl_indices_list = list.files("../data/combustion_data_layers/FISL/indices", pattern='.csv$', full.names = TRUE)
+fisl_indices_list
+```
+
+```{r}
+fisl_tct_list = list.files("../data/combustion_data_layers/FISL/tct", pattern='.csv$', full.names = TRUE)
+fisl_tct_list
+```
+
+```{r}
+fisl_treecover_list = list.files("../data/combustion_data_layers/FISL/treecover", pattern='.csv$', full.names = TRUE)
+fisl_treecover_list
+```
+
+```{r}
+fisl_static_list = list.files("../data/combustion_data_layers/FISL/static", pattern='.csv$', full.names = TRUE)
+fisl_static_list
+```
+
+```{r}
+fisl_dob_list = list.files("../data/combustion_data_layers/FISL/dob", pattern='.csv$', full.names = TRUE)
+fisl_dob_list
+```
+
+```{r}
+fisl_cna = read_csv("../data/combustion_data_layers/FISL/2025-06-02_climateNA_FISL_Normal_1981_2010MSY.csv")
+```
+
+## LC
+
+```{r}
+lc_indices_list = list.files("../data/combustion_data_layers/LC/indices", pattern='.csv$', full.names = TRUE)
+lc_indices_list
+```
+
+```{r}
+lc_tct_list = list.files("../data/combustion_data_layers/LC/tct", pattern='.csv$', full.names = TRUE)
+lc_tct_list
+```
+
+```{r}
+lc_treecover_list = list.files("../data/combustion_data_layers/LC/treecover", pattern='.csv$', full.names = TRUE)
+lc_treecover_list
+```
+
+```{r}
+lc_static_list = list.files("../data/combustion_data_layers/LC/static", pattern='.csv$', full.names = TRUE)
+lc_static_list
+```
+
+```{r}
+lc_dob_list = list.files("../data/combustion_data_layers/LC/dob", pattern='.csv$', full.names = TRUE)
+lc_dob_list
+```
+
+```{r}
+lc_cna = read_csv("../data/combustion_data_layers/LC/2025-06-02_climateNA_LC_Normal_1981_2010MSY.csv")
+```
+
+## LCC
+
+```{r}
+lcc_indices_list = list.files("../data/combustion_data_layers/LCC/indices", pattern='.csv$', full.names = TRUE)
+lcc_indices_list
+```
+
+```{r}
+lcc_tct_list = list.files("../data/combustion_data_layers/LCC/tct", pattern='.csv$', full.names = TRUE)
+lcc_tct_list
+```
+
+```{r}
+lcc_treecover_list = list.files("../data/combustion_data_layers/LCC/treecover", pattern='.csv$', full.names = TRUE)
+lcc_treecover_list
+```
+
+```{r}
+lcc_static_list = list.files("../data/combustion_data_layers/LCC/static", pattern='.csv$', full.names = TRUE)
+lcc_static_list
+```
+
+```{r}
+lcc_dob_list = list.files("../data/combustion_data_layers/LCC/dob", pattern='.csv$', full.names = TRUE)
+lcc_dob_list
+```
+
+```{r}
+lcc_cna = read_csv("../data/combustion_data_layers/LCC/2025-06-02_climateNA_LCC_Normal_1981_2010MSY.csv")
+```
+
+# Read list of files 
+
+## Functions for csv list
+
+```{r}
+csv_rbind <- function(file_list) {
+  csv_data <- purrr::map_dfr(file_list, readr::read_csv)
+  return(csv_data)
+}
+
+```
+
+```{r}
+csv_cbind <- function(file_list, id_col = "ID") {
+  
+  # Read and join using reduce with left_join by ID
+  data_list <- purrr::map(file_list, ~readr::read_csv(.x, show_col_types = FALSE))
+  
+  # Ensure ID column exists in all files
+  data_list <- purrr::map(data_list, ~dplyr::select(., dplyr::all_of(id_col), dplyr::everything()))
+  
+  # Join all data frames by ID
+  joined_data <- purrr::reduce(data_list, ~dplyr::full_join(.x, .y, by = id_col))
+  
+  return(joined_data)
+}
+
+```
+
+
+
+
+## dob
+
+```{r}
+( fisl_dob = csv_rbind(fisl_dob_list) ) 
+( lc_dob = csv_rbind(lc_dob_list) ) 
+( lcc_dob = csv_rbind(lcc_dob_list) ) 
+```
+
+## indices
+
+```{r}
+( fisl_indices = csv_rbind(fisl_indices_list) ) 
+( lc_indices = csv_rbind(lc_indices_list) ) 
+( lcc_indices = csv_rbind(lcc_indices_list) ) 
+```
+
+## tree cover
+
+```{r}
+( fisl_treecover = csv_rbind(fisl_treecover_list) ) 
+( lc_treecover = csv_rbind(lc_treecover_list) ) 
+( lcc_treecover = csv_rbind(lcc_treecover_list) ) 
+```
+
+
+## tct
+
+```{r}
+( fisl_tct = csv_rbind(fisl_tct_list) ) 
+( lc_tct = csv_rbind(lc_tct_list) ) 
+( lcc_tct = csv_rbind(lcc_tct_list) ) 
+```
+
+# Static
+
+```{r}
+( fisl_static = csv_cbind(fisl_static_list))
+( lc_static = csv_cbind(lc_static_list))
+( lcc_static = csv_cbind(lcc_static_list))
+```
+
+
+
+# clean data
+
+## functions
+
+```{r}
+clean_rbind = function(df){
+  df %>%
+    select(-.geo) %>%
+    select(-`system:index`) %>%
+    relocate(ID)
+}
+```
+
+
+```{r}
+clean_cbind = function(df){
+  df %>%
+    select(-contains(".y")) %>%
+    select(-contains(".x")) 
+}
+```
+
+```{r}
+clean_cna = function(df){
+  df %>% 
+  rename(ID = id1) %>% 
+  select(ID, AHM, CMD, CMD_sm, DD_0, DD_18, DD5, DD5_sm, EMT, Eref, Eref_sm, EXT, MAP, PAS, Rad_sm, SHM, Tmax_sm, Tmin_sm)
+}
+```
+## dob
+
+```{r}
+( fisl_dob_clean = clean_rbind(fisl_dob) )
+( lc_dob_clean = clean_rbind(lc_dob) )
+( lcc_dob_clean = clean_rbind(lcc_dob) )
+```
+## indices
+
+```{r}
+( fisl_indices_clean = clean_rbind(fisl_indices) )
+( lc_indices_clean = clean_rbind(lc_indices) )
+( lcc_indices_clean = clean_rbind(lcc_indices) )
+```
+## tct
+
+```{r}
+( fisl_tct_clean = clean_rbind(fisl_tct) )
+( lc_tct_clean = clean_rbind(lc_tct) )
+( lcc_tct_clean = clean_rbind(lcc_tct) )
+```
+
+## treecover
+
+```{r}
+( fisl_treecover_clean = clean_rbind(fisl_treecover) )
+( lc_treecover_clean = clean_rbind(lc_treecover) )
+( lcc_treecover_clean = clean_rbind(lcc_treecover) )
+```
+
+## static
+
+```{r}
+( fisl_static_clean = clean_cbind(fisl_static) )
+( lc_static_clean = clean_cbind(lc_static) )
+( lcc_static_clean = clean_cbind(lcc_static) )
+```
+
+## CNA
+
+```{r}
+fisl_cna_clean = clean_cna(fisl_cna) 
+lc_cna_clean = clean_cna(lc_cna) 
+lcc_cna_clean = clean_cna(lcc_cna) 
+```
+
+# Original point files as df
+
+```{r}
+( fisl_pts_df = fisl_pts %>% st_drop_geometry() )
+( lc_pts_df = lc_pts %>% st_drop_geometry() )
+( lcc_pts_df = lcc_pts %>% st_drop_geometry() )
+```
+# Combine orginal, static, indices, tct, and tree cover by project
+
+## Function
+
+```{r}
+combine_project_data  = function(pts, static, indices, tct, treecover, cna) {
+  join_data = full_join(pts, static, by="ID") %>%
+    full_join(., indices, by="ID") %>%
+    full_join(., tct, by="ID") %>%
+    full_join(., treecover, by="ID") %>%
+    full_join(., cna, by="ID")
+}
+```
+
+```{r}
+( fisl_df = combine_project_data(fisl_pts_df, fisl_static_clean, fisl_indices_clean, fisl_tct_clean, fisl_treecover_clean, fisl_cna_clean) )
+
+( lc_df = combine_project_data(lc_pts_df, lc_static_clean, lc_indices_clean, lc_tct_clean, lc_treecover_clean, lc_cna_clean) )
+
+( lcc_df = combine_project_data(lcc_pts_df, lcc_static_clean, lcc_indices_clean, lcc_tct_clean, lcc_treecover_clean, lcc_cna_clean) )
+```
+
+
+
+# Missing data
+
+## Project
+
+### Disnct ids
+
+```{r}
+n_distinct(fisl_df$ID)
+n_distinct(lc_df$ID)
+n_distinct(lcc_df$ID)
+```
+
+### show rows with na
+
+```{r}
+( fisl_with_na <- fisl_df %>% filter(if_any(everything(), is.na)) )
+
+( lc_with_na <- lc_df %>% filter(if_any(everything(), is.na)) )
+
+( lcc_with_na <- lcc_df %>% filter(if_any(everything(), is.na)) )
+```
+### drop na
+
+
+
+## Dob
+## Function
+
+```{r}
+combine_org_dob_data  = function(pts, dob) {
+  join_data = full_join(pts, dob, by="ID") 
+}
+```
+
+```{r}
+( fisl_dob_df = combine_org_dob_data(fisl_pts, fisl_dob_clean) )
+
+( lc_dob_df = combine_org_dob_data(lc_pts, lc_dob_clean) )
+
+( lcc_dob_df = combine_org_dob_data(lcc_pts_df, lcc_dob_clean) )
+```
+
+
+```{r}
+( fisl_dob_with_na <- fisl_dob_df %>% 
+    filter(if_any(everything(), is.na)) %>% 
+    select(-contains(".y")) %>%
+  rename_with(~ gsub("\\.x$", "", .x), ends_with(".x")))
+
+( lc_dob_with_na <- lc_dob_df %>% 
+    filter(if_any(everything(), is.na))%>% 
+    select(-contains(".y")) %>%
+  rename_with(~ gsub("\\.x$", "", .x), ends_with(".x")))
+
+( lcc_dob_with_na <- lcc_dob_df %>% filter(if_any(everything(), is.na)) )
+```
+
+```{r}
+fisl_dob_with_na
+lc_dob_with_na
+```
+
+```{r}
+sort(unique(fisl_dob_with_na$fireYr))
+```
+
+## Save to geopackage
+
+```{r eval=FALSE, include=FALSE}
+st_write(fisl_dob_with_na, "../outputs/dob_na/fisl_dob_na_2025-06-06.gpkg")
+```
+
+# DOB for FWI

@@ -1,0 +1,104 @@
+---
+title: "ABoVE-FED data Extract"
+author: "Anna Talucci"
+date: "2025-04-27"
+output: html_document
+---
+
+
+# Overview
+
+https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=2063
+
+# packages
+```{r}
+library(terra)
+library(sf)
+```
+
+# Data
+
+```{r}
+ba = rast("../data/abovefed/burned_area_2019.tif")
+depth = rast("../data/abovefed/combustion_depth_2019.tif")
+```
+
+```{r}
+depth
+```
+##points
+
+```{r}
+pts = st_read("../outputs/LCC_cleaned/points/shapefiles/lc_lcc_2025-04-24.shp", "lc_lcc_2025-04-24")
+```
+
+## modeled
+```{r}
+above = read_csv("../outputs/Predict/AbovegroundCombustion.csv")
+```
+
+```{r}
+below = read_csv("../outputs/Predict/BelowgroundCombustion.csv")
+```
+
+# SV
+
+```{r}
+sv = vect(pts)
+```
+
+
+# Extract Stiched values at points
+
+```{r}
+( extract = extract(depth, sv, xy=TRUE) )
+
+```
+
+# Get attribute dataframe
+
+```{r}
+points_as_df = function(pts){
+  pts %>%
+    st_drop_geometry()
+}
+
+
+
+(pts_df = pts %>% points_as_df() %>% rename(ID = row_id))
+
+
+```
+
+# Join extracted data to attribute df
+
+```{r}
+( join = pts_df %>%
+  full_join(., extract, by=c("ID")) 
+)
+```
+
+
+# Compare
+
+```{r}
+( abovefed = join %>% filter(fireYr =="2019") %>% select(ID, PI, siteplot, combustion_depth_2019_1, combustion_depth_2019_2) )
+```
+
+
+
+```{r}
+( pred_below = below %>% filter(fireYr =="2019") %>% select(siteplot, prediction ) %>% rename(below_pred = prediction))
+( pred_above = above %>% filter(fireYr =="2019") %>% select(siteplot, prediction ) %>% rename(above_pred = prediction))
+```
+
+
+```{r}
+( combine = abovefed %>% full_join(., pred_above, by = c("siteplot")) %>% full_join(., pred_below, by = c("siteplot")) )
+```
+
+
+```{r eval=FALSE, include=FALSE}
+write_csv(combine, "../outputs/Predict/ABoVE-FED.csv")
+```
+

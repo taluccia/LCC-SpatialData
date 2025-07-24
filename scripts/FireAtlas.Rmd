@@ -1,0 +1,82 @@
+---
+title: "Fire Atlas"
+author: "Anna Talucci"
+date: "2025-04-17"
+output: html_document
+---
+
+# overview
+
+# Library
+
+```{r}
+library(tidyverse)
+library(sf)
+library(mapview)
+```
+
+# Data
+
+## points
+
+```{r}
+gpkg_files <- list.files("../outputs/LCC_cleaned/points/geopackage", pattern='.gpkg$', full.names=TRUE)
+```
+
+```{r}
+gpkg_files
+```
+
+```{r}
+(lc_pts = st_read(gpkg_files[1]) )
+
+(lcc_pts = st_read(gpkg_files[2]) )
+```
+
+## Fire atlas files
+
+```{r}
+atlas_files <- list.files("../data/fireAtlas/final_perims", pattern='.gpkg$', full.names=TRUE)
+```
+
+```{r}
+atlas_files
+```
+
+```{r}
+(atlas2012 = st_read(atlas_files[1]) )
+(atlas2013 = st_read(atlas_files[2]) )
+(atlas2014 = st_read(atlas_files[3]) )
+(atlas2015 = st_read(atlas_files[4]) )
+
+```
+
+
+```{r}
+snap2015_files <- list.files("../data/fireAtlas/2015/Snapshot", pattern='.gpkg$', full.names=TRUE)
+```
+
+```{r}
+snap2015_files
+```
+
+```{r}
+(snap2015_files_1 = st_read(snap2015_files[1]) )
+(snap2015_files_2 = st_read(snap2015_files[2]) )
+
+```
+# Map view
+
+```{r}
+mapview(atlas2015)  + mapview(lcc_pts)
+```
+
+
+
+```{r}
+hung_natalie_fire = atlas2015 %>% filter(fireid==20992)
+```
+
+```{r}
+hung_natalie_fire
+```

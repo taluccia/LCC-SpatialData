@@ -1,0 +1,300 @@
+---
+title: "Organize Single Dataframe"
+author: "Anna Talucci"
+date: "2025-04-22"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Combine spatial data in to single dataframe
+
+
+color help
+http://vrl.cs.brown.edu/color
+# Packages
+
+```{r}
+library(tidyverse)
+```
+
+# Plot themes
+
+```{r}
+comp_theme = theme_bw() + theme(legend.position = "bottom") +  
+  theme(panel.grid.major = element_blank()) +
+    theme(axis.title.y = element_text(size = 11, hjust = 0.5, vjust = 1.1),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"))
+```
+
+# Data
+
+## All site data
+
+```{r}
+allData = read_csv("../data/LCC/LCC_Site_clean.csv")
+```
+
+## Spatial Data
+
+### Forest Age
+
+```{r}
+lcc_forest_age = read_csv("../outputs/LCC_cleaned/csv/LCC_stand_age_2025-04-22.csv")
+lc_forest_age = read_csv( "../outputs/LCC_cleaned/csv/LC_stand_age_2025-04-22.csv")
+```
+
+### Climate
+
+```{r}
+lc_climate = read_csv("../outputs/extractSpatialData/lc_worldclim2_monthlyClimate_2025-04-17.csv")  
+lcc_climate = read_csv("../outputs/extractSpatialData/lcc_worldclim2_monthlyClimate_2025-04-17.csv")   
+```
+
+# View
+
+```{r}
+allData
+```
+
+```{r}
+lc_forest_age
+lcc_forest_age
+```
+
+```{r}
+lc_climate
+lcc_climate
+```
+
+
+
+# Split all data into LC and LCC
+
+```{r}
+( lc = allData %>% filter(project=="LC") )
+( lcc = allData %>% filter(project=="LCC") )
+
+```
+
+# Reduce columns on Spatial data
+
+```{r}
+lc_age = lc_forest_age %>% dplyr::select(fire:unique_site_id, row_id, stand_age)
+lcc_age = lcc_forest_age %>% dplyr::select(researcher, site, plot, forest_age) %>% rename(stand_age = forest_age)
+```
+
+```{r}
+( lc_wc2 = lc_climate %>% dplyr::select(fire:unique_site_id,  wc2.1_30s_tmin_01:wc2.1_30s_bio_9) )
+( lcc_wc2 = lcc_climate %>% dplyr::select(researcher, site, plot, wc2.1_30s_tmin_01:wc2.1_30s_bio_9)  )
+```
+
+
+```{r}
+unique(lcc_wc2$siteplot)
+unique(lcc$siteplot)
+```
+
+# Combine
+
+
+```{r eval=FALSE, include=FALSE}
+( lcc_join = lcc %>% 
+  full_join(., lcc_wc2, by = "siteplot") %>%
+  full_join(., lcc_age, by = "siteplot") %>%
+    drop_na(siteplot))
+```
+
+```{r eval=FALSE, include=FALSE}
+full_join(lcc %>% group_by(site) %>% mutate(id = row_number()),
+          lcc_wc2 %>% group_by(site) %>% mutate(id = row_number()),
+          by = c("id", "site"))
+```
+
+
+# Data for plots
+researcher, study_area/fire, site/plot
+```{r}
+( lc_age = lc_forest_age %>% 
+  mutate(researcher="Walker") %>% 
+  rename(study_area = fire, forest_age = stand_age) %>% 
+  unite("siteplot", site:plot, remove = FALSE) %>%
+  dplyr::select(researcher, study_area, siteplot, forest_age) )
+```
+
+```{r}
+( lcc_age = lcc_forest_age %>% 
+  rename(siteplot = site) %>%
+  dplyr::select(researcher, study_area, siteplot, forest_age) )
+  
+```
+
+```{r}
+( forest_age = bind_rows(lc_age, lcc_age) %>% drop_na(researcher))
+```
+
+```{r}
+( climate_LC = lc_climate %>% 
+  mutate(researcher="Walker") %>% 
+  rename(study_area = fire) %>% 
+  unite("siteplot", site:plot, remove = FALSE) %>%
+  dplyr::select(researcher, study_area, siteplot, wc2.1_30s_tmin_01:wc2.1_30s_bio_9) )
+```
+
+```{r}
+( climate_LCC = lcc_climate %>% 
+  rename(siteplot = site) %>%
+  dplyr::select(researcher, study_area, siteplot, wc2.1_30s_tmin_01:wc2.1_30s_bio_9) )
+```
+
+```{r}
+( climate = bind_rows(climate_LC, climate_LCC) %>% drop_na(researcher))
+```
+
+
+# Box Plots
+
+## Color coding
+'#256676', Baltzer
+'#7cd3eb', Bergeron
+'#3a427d', Diaz Veraverbeke
+'#956bed', Dominque Arsonault
+'#ffa8ff', Gundal/Nisson
+'#8a2f6b', Hayes
+'#f75ef0', Hung & Natali
+'#1932bf', Kristen Reid
+'#6e9df7', Lucas Brehaut
+'#45deb2', Metcalfe
+'#069668', Pare
+'#a5e841', Parisien
+'#0b5313', Saperstein
+'#cadba5' Walker
+
+## Forest Age
+
+```{r}
+( forest_age_plot = ggplot(forest_age, aes(x=researcher, y=forest_age, color = researcher)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#7cd3eb', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#a5e841', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Stand Age (satillite derived)") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-24_forestAge.png", plot = forest_age_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
+
+## Climate
+
+```{r}
+( precip_wet_plot = ggplot(climate, aes(x=researcher, y=wc2.1_30s_bio_13, color = researcher)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#7cd3eb', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#a5e841', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Precipitation wettest month (WorldClim2)") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-24_precipWettest.png", plot = precip_wet_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
+
+```{r}
+( precip_dry_plot = ggplot(climate, aes(x=researcher, y=wc2.1_30s_bio_14, color = researcher)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#7cd3eb', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#a5e841', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Precipitation driest month (WorldClim2)") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-24_precipDriest.png", plot = precip_dry_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
+
+```{r}
+( temp_warm_plot = ggplot(climate, aes(x=researcher, y=wc2.1_30s_bio_10, color = researcher)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#7cd3eb', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#a5e841', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Mean temperature warmest quarter (WorldClim2)") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-24_tempWarmestquarter.png", plot = temp_warm_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
+
+```{r}
+( temp_Max_plot = ggplot(climate, aes(x=researcher, y=wc2.1_30s_bio_5, color = researcher)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#7cd3eb', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#a5e841', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Max temperature of warmest month (WorldClim2)") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-24_tempMaxMonth.png", plot = temp_Max_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```

@@ -1,0 +1,89 @@
+---
+title: "Combustion Model Predictors"
+author: "Anna Talucci"
+date: "2025-06-23"
+output: html_document
+---
+
+# Overview
+
+Combine CSV files at project level for combustion model and for day of burn data.
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+
+# Data 
+
+```{r}
+fisl = read_csv("../data/combustion_predictors/2025-06-23_FISL_forModel.csv")
+lc = read_csv("../data/combustion_predictors/2025-06-23_FISL_forModel.csv")
+org = read_csv("../data/combustion_predictors/all_predictors.csv")
+```
+
+# view
+
+```{r}
+fisl
+lc
+org
+```
+
+# Final clean to combine
+
+```{r}
+(fisl_df = fisl %>% 
+  rename(latitude = lat, longitude = lon, burn_year = fireYr, Date = date,  id = ID) %>%
+  mutate(project.name = "FISL")
+)
+  
+```
+
+```{r}
+(lc_df = lc %>% 
+  rename(latitude = lat, longitude = lon, burn_year = fireYr, Date = date, id = ID) %>%
+  mutate(project.name = "LC")
+)
+  
+```
+
+# Check column differences
+```{r}
+setdiff(names(org), names(fisl_df))
+setdiff(names(fisl_df), names(org))
+```
+
+```{r}
+setdiff(names(org), names(lc_df))
+setdiff(names(lc_df), names(org))
+```
+
+# Combine LC and FISL
+
+```{r}
+(fisl_lc_df = bind_rows(fisl_df, lc_df))
+```
+
+```{r}
+write_csv(fisl_lc_df, "../outputs/CombustionModelPredictors/2025-06-23_LC_FISL_combustionModelPredictors.csv")
+```
+
+# Drop burn depth
+
+```{r}
+(fisl_lc_orgpred_df = fisl_lc_df %>% select(-burn.depth))
+```
+
+# Add fisl lc to orginal predictor dataframe
+
+```{r}
+( fisl_lc_orginal = bind_rows(org, fisl_lc_df) )
+```
+
+```{r}
+write_csv(fisl_lc_orginal, "../outputs/CombustionModelPredictors/2025-06-23_LC_FISL_Original_combustionModelPredictors.csv")
+```

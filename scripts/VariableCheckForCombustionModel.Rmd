@@ -1,0 +1,35 @@
+---
+title: "Variable Check for Combustion Model"
+author: "Anna Talucci"
+date: "2025-06-02"
+output: html_document
+---
+
+# Overview
+
+Check data sets for missing variable for combustion model. Use this script to figure out what data to extract for which data set and data points.
+
+This is for Betsy's FISL data, Walker LC data, and LCC (only if have combustion calculations) 
+
+
+# Packages
+
+```{r}
+library(tidyverse)
+```
+
+
+# Data
+
+```{r}
+lc = read_csv("../outputs/LCC_cleaned/csv/LC_ID_2025-05-27.csv")
+lcc = read_csv("../outputs/LCC_cleaned/csv/LCC_ID_2025-05-27.csv")
+fisl = read_csv("../outputs/LCC_cleaned/csv/FISL_ID_2025-05-27.csv")
+```
+
+
+
+
+
+
+

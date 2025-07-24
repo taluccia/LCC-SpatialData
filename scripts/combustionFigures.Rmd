@@ -1,0 +1,116 @@
+---
+title: "Combustion Figures"
+author: "Anna Talucci"
+date: "2025-04-27"
+output: html_document
+---
+
+# Overview
+
+# Packages
+
+```{r}
+library(tidyverse)
+```
+# Data
+```{r}
+above = read_csv("../outputs/Predict/AbovegroundCombustion_2025-04-30.csv")
+```
+
+```{r}
+below = read_csv("../outputs/Predict/BelowgroundCombustion_2025-04-30.csv")
+```
+
+# view data
+```{r}
+above
+below
+```
+```{r}
+above %>% group_by(fireYr, PI) %>% summarise(n = n())
+```
+```{r}
+below %>% group_by(fireYr, PI) %>% summarise(n = n())
+```
+
+# Figures 
+
+## Plot themes
+
+```{r}
+comp_theme = theme_bw() + theme(legend.position = "bottom") +  
+  theme(panel.grid.major = element_blank()) +
+    theme(axis.title.y = element_text(size = 11, hjust = 0.5, vjust = 1.1),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"))
+```
+
+## Color coding
+'#256676', Baltzer
+'#7cd3eb', Bergeron -
+'#3a427d', Diaz Veraverbeke -
+'#956bed', Dominque Arsonault -
+'#ffa8ff', Gundal/Nisson -
+'#8a2f6b', Hayes
+'#f75ef0', Hung & Natali 
+'#1932bf', Kristen Reid
+'#6e9df7', Lucas Brehaut -
+'#45deb2', Metcalfe -
+'#069668', Pare -
+'#a5e841', Parisien -
+'#0b5313', Saperstein
+'#cadba5' Walker
+
+## above
+
+```{r}
+( above_plot = ggplot(above, aes(x=PI, y=prediction, color = PI)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#8a2f6b', '#f75ef0',  '#1932bf', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Aboveground combustion (kg of carbon)") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", linewidth =1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-30_abovegroundCOmbustion.png", plot = above_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
+
+
+## below
+
+```{r}
+( below_plot = ggplot(below, aes(x=PI, y=prediction, color = PI)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#8a2f6b', '#f75ef0',  '#1932bf', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Belowground combustion (kg of carbon)") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", linewidth =1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-30_belowgroundCombustion.png", plot = below_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
+
