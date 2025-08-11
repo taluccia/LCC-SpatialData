@@ -71,13 +71,19 @@ fisl %>%
 ```
 
 # Add unique ID and select columns for spatial data
-
+need to edit Kate Hayes site 20_1 and 36_1 both burned in 1996
 ```{r}
 ( lcc_id = lcc %>% 
   mutate(project = "LCC", 
          ID = paste0(project, "_", row_id )) %>%
   relocate(ID, project, row_id) %>%
-  select(-`...1`) )
+  select(-`...1`) %>%
+     mutate(year_of_burn = if_else(site %in% c("20_1", "36_1"), "1996", year_of_burn) # fix Hayes fire year error
+  )) 
+```
+
+```{r}
+lcc_id %>% filter(researcher=="Hayes")
 ```
 
 ```{r}
@@ -101,9 +107,9 @@ fisl %>%
 ## Save full dataframe with ID to csv
 
 ```{r}
-write_csv(lc_id, "../outputs/LCC_cleaned/csv/LC_ID_2025-06-02.csv")
-write_csv(lcc_id, "../outputs/LCC_cleaned/csv/LCC_ID_2025-06-02.csv")
-write_csv(fisl_id, "../outputs/LCC_cleaned/csv/FISL_ID_2025-06-02.csv")
+write_csv(lc_id, "../outputs/LCC_cleaned/csv/LC_ID_2025-08-11.csv")
+write_csv(lcc_id, "../outputs/LCC_cleaned/csv/LCC_ID_2025-08-11.csv")
+write_csv(fisl_id, "../outputs/LCC_cleaned/csv/FISL_ID_2025-08-11.csv")
 ```
 
 ## Subset columns to ID, lat, Lon, 
@@ -190,15 +196,15 @@ mapview(fisl_pts_WGS84)
 # Save Spatial Data files
 
 ```{r eval=FALSE, include=FALSE}
-st_write(lc_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/lc_pts_WGS84_2025-06-02.shp", driver="ESRI Shapefile")
+st_write(lc_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lc_pts_WGS84.shp", driver="ESRI Shapefile")
 ```
 
 ```{r eval=FALSE, include=FALSE}
-st_write(lcc_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/lcc_pts_WGS84_2025-06-02.shp", driver="ESRI Shapefile")
+st_write(lcc_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lcc_pts_WGS84.shp", driver="ESRI Shapefile")
 ```
 
 ```{r eval=FALSE, include=FALSE}
-st_write(fisl_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/fisl_pts_WGS84_2025-06-02.shp", driver="ESRI Shapefile")
+st_write(fisl_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-11_fisl_pts_WGS84.shp", driver="ESRI Shapefile")
 ```
 
 
