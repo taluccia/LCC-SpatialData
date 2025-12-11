@@ -1,0 +1,143 @@
+---
+title: "Figures FWI Variables"
+author: "Anna Talucci"
+date: "2025-08-11"
+output: html_document
+---
+
+
+# Figures 
+
+## Plot themes
+
+```{r}
+comp_theme = theme_bw() + theme(legend.position = "bottom") +  
+  theme(panel.grid.major = element_blank()) +
+    theme(axis.title.y = element_text(size = 11, hjust = 0.5, vjust = 1.1),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"))
+```
+
+## Color coding
+'#256676', Baltzer
+'#7cd3eb', Bergeron -
+'#3a427d', Diaz Veraverbeke 
+'#956bed', Dominque Arsonault 
+'#ffa8ff', Gundal/Nisson 
+'#8a2f6b', Hayes
+'#f75ef0', Hung & Natali 
+'#1932bf', Kristen Reid
+'#6e9df7', Lucas Brehaut 
+'#45deb2', Metcalfe 
+'#069668', Pare 
+'#a5e841', Parisien -
+'#0b5313', Saperstein
+'#cadba5' Walker
+
+## fwi
+
+```{r}
+( fwi_plot = ggplot(fwi, aes(x=PI, y=fire_weather_index, color = PI)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Fire Weather Index") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-29_fwi.png", plot = fwi_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
+
+
+## keetch_byram_drought_index
+keetch_byram_drought_index 0 to 800. A value of 0 indicates no moisture deficit, while 800 represents the maximum possible drought. 
+```{r}
+( drought_plot = ggplot(fwi, aes(x=PI, y=keetch_byram_drought_index, color = PI)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Keetch Byram drought index") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-29_drought.png", plot = drought_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
+
+
+
+
+## fine_fuel_moisture_code
+
+```{r}
+( ffm_plot = ggplot(fwi, aes(x=PI, y=fine_fuel_moisture_code, color = PI)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Fine fuel moisture code") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-29_FFMC.png", plot = ffm_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
+
+## initial_fire_spread_index
+
+```{r}
+( isi_plot = ggplot(fwi, aes(x=PI, y=initial_fire_spread_index, color = PI)) +
+  geom_boxplot( linewidth = .3 ) + #,outlier.shape = NA, size = 3, shape = 21
+  geom_jitter( size = 1, shape = 21) +
+      scale_color_manual(values=c('#256676', '#3a427d', '#956bed', '#ffa8ff', '#8a2f6b', '#f75ef0', '#1932bf', '#6e9df7', '#45deb2', '#069668', '#0b5313', '#cadba5'), name="") +
+    stat_summary(fun=mean, geom="point", shape=23, size=2, color="tomato") +
+
+  labs(x="Researcher", y="Initial spread index") +
+  coord_flip() +
+
+  comp_theme +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size=8),
+          axis.text.x = element_text(size=8),
+          strip.background = element_rect( color="white", fill="white", size=1.5, linetype="solid" )) +
+    theme(strip.text.x = element_text(size = 9))
+)
+```
+
+### Save Figures
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/boxplots/2025-04-29_ISI.png", plot = isi_plot,  width = 6, height =5, units = c("in"), dpi=600, bg = "white" )
+```
