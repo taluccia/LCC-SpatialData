@@ -1,0 +1,51 @@
+---
+title: "Compare Data updates"
+author: "Anna Talucci"
+date: "2025-08-08"
+output: html_document
+---
+
+# Overview
+
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+
+# Data 
+
+```{r}
+
+lc_soil = read_csv("../data/2025-08-08_SpatialData/soilGrid/staticSoil30cm_LC.csv")
+lcc_soil = read_csv("../data/2025-08-08_SpatialData/soilGrid/staticSoil30cm_LCC.csv")
+lcc_scale = read_csv("../data/2025-08-08_SpatialData/soilGrid/staticSoil30cm_scaleFactor_LCC.csv")
+lcc_soil_1m = read_csv("../data/2025-08-08_SpatialData/soilGrid/staticSoil_100cm_LCC.csv")
+soil_old = read_csv("../data/static/2025-08-08_staticSoil250_LCC.csv")
+```
+
+
+# View Data
+
+```{r}
+lc_soil
+lcc_soil
+lcc_soil_1m
+soil_old
+```
+```{r}
+
+lcc_soil_1m %>% select(-`system:index`, -.geo, -fireYr, -lat, -lon) %>% relocate (ID)
+```
+
+```{r}
+
+lcc_soil %>% select(-`system:index`, -.geo, -fireYr, -lat, -lon) %>% relocate (ID)
+```
+
+```{r}
+soil_old %>% select(-`system:index`, -.geo, -fireYr, -lat, -lon) %>% relocate (ID)
+```

@@ -1,0 +1,199 @@
+---
+title: "Organize Combustion Model Data for prediction"
+author: "Anna Talucci"
+date: "2025-08-14"
+output: html_document
+---
+
+
+# Overview
+
+
+
+
+
+
+## LCC
+
+```{r}
+lcc_indices_list = list.files("../data/combustion_data_layers/LCC/indices", pattern='.csv$', full.names = TRUE)
+lcc_indices_list
+```
+
+```{r}
+lcc_tct_list = list.files("../data/combustion_data_layers/LCC/tct", pattern='.csv$', full.names = TRUE)
+lcc_tct_list
+```
+
+```{r}
+lcc_treecover_list = list.files("../data/combustion_data_layers/LCC/treecover", pattern='.csv$', full.names = TRUE)
+lcc_treecover_list
+```
+
+```{r}
+lcc_static_list = list.files("../data/combustion_data_layers/LCC/static", pattern='.csv$', full.names = TRUE)
+lcc_static_list
+```
+
+```{r}
+lcc_dob_list = list.files("../data/combustion_data_layers/LCC/dob", pattern='.csv$', full.names = TRUE)
+lcc_dob_list
+```
+
+```{r}
+lcc_cna = read_csv("../data/combustion_data_layers/LCC/2025-06-02_climateNA_LCC_Normal_1981_2010MSY.csv")
+```
+
+```{r}
+lcc_fwi_gfwed = read_csv("../outputs/LCC_cleaned/csv/2025-06-23_LCC_fwi_gfwed.csv")
+```
+
+# Read list of files 
+
+## Functions for csv list
+
+```{r}
+csv_rbind <- function(file_list) {
+  csv_data <- purrr::map_dfr(file_list, readr::read_csv)
+  return(csv_data)
+}
+
+```
+
+```{r}
+csv_cbind <- function(file_list, id_col = "ID") {
+  
+  # Read and join using reduce with left_join by ID
+  data_list <- purrr::map(file_list, ~readr::read_csv(.x, show_col_types = FALSE))
+  
+  # Ensure ID column exists in all files
+  data_list <- purrr::map(data_list, ~dplyr::select(., dplyr::all_of(id_col), dplyr::everything()))
+  
+  # Join all data frames by ID
+  joined_data <- purrr::reduce(data_list, ~dplyr::full_join(.x, .y, by = id_col))
+  
+  return(joined_data)
+}
+
+```
+
+```{r}
+( lcc_dob = csv_rbind(lcc_dob_list) ) 
+( lcc_indices = csv_rbind(lcc_indices_list) ) 
+( lcc_treecover = csv_rbind(lcc_treecover_list) ) 
+( lcc_tct = csv_rbind(lcc_tct_list) ) 
+( lcc_static = csv_cbind(lcc_static_list))
+
+```
+
+
+# clean data
+
+## functions
+
+```{r}
+clean_rbind = function(df){
+  df %>%
+    select(-.geo) %>%
+    select(-`system:index`) %>%
+    relocate(ID)
+}
+```
+
+
+```{r}
+clean_cbind = function(df){
+  df %>%
+    select(-contains(".y")) %>%
+    select(-contains(".x")) 
+}
+```
+
+```{r}
+
+( lcc_dob_clean = clean_rbind(lcc_dob) )
+( lcc_indices_clean = clean_rbind(lcc_indices) )
+( lcc_tct_clean = clean_rbind(lcc_tct) )
+( lcc_treecover_clean = clean_rbind(lcc_treecover) )
+( lcc_static_clean = clean_cbind(lcc_static) )
+
+```
+
+## CNA
+
+
+```{r}
+clean_cna = function(df){
+  df %>% 
+  rename(ID = id1) %>%
+    select(ID, AHM, bFFP, CMD, CMD05, CMD06, CMD07, CMD08, DD_0, DD_0_05, DD_0_06, DD_0_07, DD_0_08, DD_18, DD18_05, DD18_06, DD18_07, DD18_08, DD18, DD18_sm, DD18_05, DD18_06, DD18_07, DD18_08, DD5, DD5_05, DD5_06, DD5_07, DD5_08, eFFP, EMT, Eref, Eref05, Eref06, Eref07, Eref08, EXT, FFP, MAP, MAR, MAT, MCMT, MSP, MWMT, NFFD, NFFD05, NFFD06, NFFD07, NFFD08, PAS, PAS05, PAS06, PAS07, PAS08, PPT05, PPT06, PPT07, PPT08, Rad05, Rad06, Rad07, Rad08, RH, RH05, RH06, RH07, RH08, SHM, Tave05, Tave06, Tave07, Tave08, TD, Tmax05, Tmax06, Tmax07, Tmax08, Tmin05, Tmin06, Tmin07, Tmin08) %>%
+    mutate(CMD_5_8 = ((CMD05 + CMD06 + CMD07 + CMD08)/4),
+           DD_0_5_8 = ((DD_0_05 + DD_0_06 + DD_0_07 + DD_0_08)/4),
+           DD_18_5_8 = ((DD18_05 + DD18_06 + DD18_07 + DD18_08)/4),
+           DD5_5_8 = ((DD5_05 + DD5_06 + DD5_07 + DD5_08)/4),
+           Eref_5_8 = ((Eref05 + Eref06 + Eref07 + Eref08)/4),
+           NFFD_5_8 = ((NFFD05 + NFFD06 + NFFD07 + NFFD08)/4),
+           PAS_5_8 = ((PAS05 + PAS06 + PAS07 + PAS08)/4),
+           PPT_5_8 = ((PPT05 + PPT06 + PPT07 + PPT08)/4),
+           Rad_5_8 = ((Rad05 + Rad06 + Rad07 + Rad08)/4), 
+           RH_5_8 = ((RH05 + RH06 + RH07 + RH08)/4),
+           Tave_5_8 = ((Tave05 + Tave06 + Tave07 + Tave08)/4),
+           Tmax_5_8 = ((Tmax05 + Tmax06 + Tmax07 + Tmax08)/4),
+           Tmin_5_8 = ((Tmin05 + Tmin06 + Tmin07 + Tmin08)/4)) %>%
+    select(-contains("05"), -contains("06"), -contains("07"), -contains("08")) %>%
+     dplyr::rename_with(~ paste("CNA", .x, sep = "_")) %>%
+    rename(ID = CNA_ID)
+}
+```
+
+
+```{r}
+
+( lcc_cna_clean = clean_cna(lcc_cna) ) 
+
+```
+
+# Field data
+
+```{r}
+lcc_field
+```
+
+```{r}
+( lcc_pts_df = lcc_pts %>% st_drop_geometry() )
+```
+
+# Combine orginal, static, indices, tct, and tree cover by project
+
+## Function
+
+```{r}
+combine_project_data  = function(pts, static, indices, tct, treecover, cna, fwi_gfwed) {
+  join_data = full_join(pts, static, by="ID") %>%
+    full_join(., indices, by="ID") %>%
+    full_join(., tct, by="ID") %>%
+    full_join(., treecover, by="ID") %>%
+    full_join(., cna, by="ID") %>%
+    full_join(., fwi_gfwed, by="ID") %>%
+    select(-fireYr) %>%
+    rename(lat=lat.x, lon=lon.x, fireYr = fireYr.x, NDII = dNDII, NDVI = dNDVI, Relative.humidity = rh, Temperature =t, Tree.cover = tree_canopy_cover, VPD = vpd, Wind.speed = wspeed) %>%
+    relocate(ID, lat, lon, fireYr) %>%
+    select(-contains(".y")) %>%
+    select(-contains(".x"))
+}
+```
+
+
+```{r}
+( lcc_df = combine_project_data(lcc_pts_df, lcc_static_clean, lcc_indices_clean, lcc_tct_clean, lcc_treecover_clean, lcc_cna_clean, lcc_fwi_gfwed) )
+```
+
+## missing data for combustion variable data frames
+
+```{r}
+( lcc_with_na <- lcc_df %>% filter(if_any(everything(), is.na)) )
+```
+
+```{r}
+n_distinct(lcc_df$ID)
+```
