@@ -5,12 +5,17 @@ date: "2025-04-17"
 output: html_document
 ---
 
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
 # Overview
 
 Take Day of Burn day of year day and convert to YYYY-MM-DD for EE script for extracting FWI.
 
 Input data is from Earth Engine output
 
+**PART OF WORK FLOW 8/11/2025**
 # packages
 
 ```{r}
@@ -23,21 +28,21 @@ library(sf)
 ## point data
 
 ```{r}
-lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/lc_pts_NAD83_wgs84_2025-04-24.shp", "lc_pts_NAD83_wgs84_2025-04-24")
+lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lc_pts_WGS84.shp", "2025-08-11_lc_pts_WGS84")
 ```
 
 ```{r}
-lcc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/lcc_pts_wgs84_2025-04-24.shp", "lcc_pts_wgs84_2025-04-24")
+lcc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lcc_pts_WGS84.shp", "2025-08-11_lcc_pts_WGS84")
 ```
 
 ## Day of bun
 
 ```{r}
-lc_files <- list.files("../data/modisDob/lc", pattern='.csv$', full.names=TRUE)
+lc_files <- list.files("../data/2025-08-08_SpatialData/DoBModis/lc", pattern='.csv$', full.names=TRUE)
 ```
 
 ```{r}
-lcc_files <- list.files("../data/modisDob/lcc", pattern='.csv$', full.names=TRUE)
+lcc_files <- list.files("../data/2025-08-08_SpatialData/DoBModis/lcc", pattern='.csv$', full.names=TRUE)
 ```
 
 ```{r}
@@ -69,8 +74,8 @@ lcc_df
               month= strftime(date, "%m"), 
               day=strftime(date,"%d"))  %>%
   rename(dob=BurnDate) %>%
-  relocate(row_id, date) %>%
-  dplyr::select(row_id, dob, date)
+  relocate(ID, date) %>%
+  dplyr::select(ID, dob, date)
   
 )
 ```
@@ -83,8 +88,8 @@ lcc_df
               month= strftime(date, "%m"), 
               day=strftime(date,"%d"))  %>%
   rename(dob=BurnDate) %>%
-  relocate(row_id, date) %>%
-  dplyr::select(row_id, dob, date)
+  relocate(ID, date) %>%
+  dplyr::select(ID, dob, date)
   
 )
 ```
@@ -92,14 +97,19 @@ lcc_df
 # Join to points
 
 ```{r}
+lc_pts
+lcc_pts
+```
+
+```{r}
 ( lc_dob_pts = lc_pts %>% 
-    full_join(., lc_dob, by="row_id") %>%
+    full_join(lc_dob, by='ID') %>%
     mutate(date = as.character(date)))
 ```
 
 ```{r}
 ( lcc_dob_pts = lcc_pts %>% 
-    full_join(., lcc_dob, by="row_id") %>% 
+    full_join(., lcc_dob, by="ID") %>% 
     mutate(date = as.character(date)))
 ```
 
@@ -173,19 +183,19 @@ cat(paste0(sprintf("'%s'", sort(unique(lc_dob_pts$date))), collapse = ", "))
 # save all points
 
 ```{r eval=FALSE, include=FALSE}
-st_write(lc_dob_pts, "../outputs/LCC_cleaned/points/shapefiles/lc_pts_dob_allpts_2025-04-29.shp", driver="ESRI Shapefile")
+st_write(lc_dob_pts, "../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lc_pts_dob.shp", driver="ESRI Shapefile")
 ```
 
 ```{r eval=FALSE, include=FALSE}
-st_write(lcc_dob_pts, "../outputs/LCC_cleaned/points/shapefiles/lcc_pts_dob_allpts_2025-04-29.shp", driver="ESRI Shapefile")
+st_write(lcc_dob_pts, "../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lcc_pts_dob.shp", driver="ESRI Shapefile")
 ```
 
 # save shapefile for EE
 
 ```{r eval=FALSE, include=FALSE}
-st_write(lc_drop_na, "../outputs/LCC_cleaned/points/shapefiles/lc_pts_dob_2025-04-24.shp", driver="ESRI Shapefile")
+st_write(lc_drop_na, "../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lc_pts_dob_dropNa.shp", driver="ESRI Shapefile")
 ```
 
 ```{r eval=FALSE, include=FALSE}
-st_write(lcc_drop_na, "../outputs/LCC_cleaned/points/shapefiles/lcc_pts_dob_2025-04-24.shp", driver="ESRI Shapefile")
+st_write(lcc_drop_na, "../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lcc_pts_dob_dropNa.shp", driver="ESRI Shapefile")
 ```

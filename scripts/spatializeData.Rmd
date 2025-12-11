@@ -15,6 +15,7 @@ Use cleaned qaqc data from `ExploreData.Rmd` to generate spatial data to extract
 
 Updated on 5/27/25 for sharing with ID, Lat, and Lon column. Id will be a combination of project code and row number for LC, LCC, and Black data.
 
+**Part of work flow 8/11/2025**
 
 # Packages
 ```{r}
@@ -233,6 +234,13 @@ fisl_3col
 ```
 
 ```{r}
+( climateEU_lcc = climateNA_lcc %>% 
+  filter(long > 0)  
+)
+
+```
+
+```{r}
 ( climateNA_fisl = fisl_3col %>% 
   rename(id1 = ID, id2 = fireYr, long = lon) %>%
   relocate(id1, id2) 
@@ -245,6 +253,11 @@ write_csv(climateNA_lcc, "../outputs/LCC_cleaned/csv/2025-06-02_climateNA_LCC.cs
 write_csv(climateNA_fisl, "../outputs/LCC_cleaned/csv/2025-06-02_climateNA_FISL.csv")
 ```
 
+```{r}
+
+write_csv(climateEU_lcc, "../outputs/LCC_cleaned/csv/2025-08-14_climateEU_LCC.csv")
+
+```
 
 # OLD Code
 

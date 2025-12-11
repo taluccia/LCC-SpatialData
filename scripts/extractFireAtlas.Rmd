@@ -4,43 +4,120 @@ author: "Anna Talucci"
 date: "2025-04-28"
 output: html_document
 ---
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
 
 # Overview
-years of interest: 2013, 2015, 2017, 2018, 2019, 2020, 2021, 2022,
 
-fisl "2004" "2015" "2019" "2020" "2021"
-# Packages
+
+
 ```{r}
-library(tidyverse)  # Data manipulation & visualization
-
+library(tidyverse)
 library(sf)
-library(mapview)
+
+# Read point shapefiles
+lc_pts  <- st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lc_pts_dob.shp")
+lcc_pts <- st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lcc_pts_dob.shp")
+
+# Fire years for each dataset
+lc_years  <- c(2015, 2018, 2019, 2020, 2021, 2022)
+lcc_years <- c(2013, 2015, 2017, 2018, 2019, 2020, 2021, 2022)
+
+# Function: join Fire Atlas polygons for a given year and point set
+process_year <- function(year, pts, prefix) {
+  
+  message("Processing ", prefix, " year ", year, "...")
+  
+  # Subset points for that year with missing DOB
+  points_subset <- pts %>%
+    filter(fireYr == year) %>%
+    st_transform(crs = 3571)
+  
+  if (nrow(points_subset) == 0) {
+    message("  No points to process.")
+    return(NULL)
+  }
+  
+  # List Fire Atlas gpkg files for that year
+  gpkg_files <- list.files(
+    paste0("../data/fireAtlas/", year, "/Snapshot"),
+    pattern = "\\.gpkg$",
+    full.names = TRUE
+  )
+  
+  # Function to join one gpkg
+  join_one <- function(file) {
+    poly <- tryCatch(st_read(file, quiet = TRUE), error = function(e) return(NULL))
+    if (is.null(poly) || nrow(poly) == 0) return(NULL)
+    
+    if (st_crs(poly) != st_crs(points_subset)) {
+      poly <- st_transform(poly, st_crs(points_subset))
+    }
+    
+    joined <- st_join(points_subset, poly, join = st_intersects)
+    
+    if ("avgspread" %in% names(joined)) {
+      joined <- joined %>%
+        mutate(across(c(avgspread, spread95, mergedate), ~ suppressWarnings(as.numeric(.))))
+    }
+    
+    joined$source_file <- basename(file)
+    return(joined)
+  }
+  
+  joined_list <- map(gpkg_files, join_one) %>% compact()
+  if (length(joined_list) == 0) return(NULL)
+  
+  joined_points <- bind_rows(joined_list)
+  
+  # Select min dob per ID
+  joined_points_min_dob <- joined_points %>%
+    group_by(ID) %>%
+    slice_min(ted_doy, n = 1, with_ties = FALSE) %>%
+    ungroup() %>%
+    select(ID:fireYr, tst_year, tst_month, tst_day, ted_year, ted_month, ted_day, ted_ampm, ted_doy)
+  
+  # Save output
+  out_file <- sprintf("../outputs/2025-08-11_fireatlas_dob/%s_fireAtlas_dob_%d.shp", prefix, year)
+  st_write(joined_points_min_dob, out_file, driver = "ESRI Shapefile", delete_layer = TRUE)
+  
+  return(joined_points_min_dob)
+}
+
+# Run for LC and LCC
+lc_results  <- map(lc_years,  ~ process_year(.x, lc_pts,  "LC"))
+lcc_results <- map(lcc_years, ~ process_year(.x, lcc_pts, "LCC"))
+
 ```
 
-# Data
 
-## Points
-```{r}
-points = st_read("../outputs/LCC_cleaned/points/shapefiles/lc_lcc_2025-04-24.shp", "lc_lcc_2025-04-24")
-```
-```{r}
-fisl_points = st_read( "../outputs/dob_na/fisl_dob_na_2025-06-06.gpkg")
-```
-## Fire Atlas data
 
-```{r}
-gpkg_files <- list.files("../data/fireAtlas/2015/Snapshot", pattern='.gpkg$', full.names=TRUE)
-```
 
-```{r}
-first = st_read(gpkg_files[1])
-first
-```
+# OLD CODE!!!!!!!++++++++++++++++++
+
 
 # Filter points for fire year
+
 ```{r}
-( points_subset = fisl_points %>% filter(fireYr==2015) %>% st_transform(., crs=3571) )
+( lc_dob_na = lc_pts %>% filter(is.na(dob)) )
+
+sort(unique(lc_dob_na$fireYr))
 ```
+
+```{r}
+( lcc_dob_na = lcc_pts %>% filter(is.na(dob)) )
+
+sort(unique(lcc_dob_na$fireYr))
+```
+
+LC: "2015" "2018" "2019" "2020" "2021" "2022"
+LCC: "2013"    "2015"    "2017"    "2018"    "2019" "2020"    "2021"    "2022" 
+
+```{r}
+( points_subset = lc_pts %>% filter(fireYr==2019) %>% filter(is.na(dob)) %>% st_transform(., crs=3571) )
+```
+
 
 # Function to read one gpkg and spatial join to points
 
@@ -96,7 +173,10 @@ joined_points <- bind_rows(joined_list)
 
 
 
+LC: "2015" "2018" "2019" "2020" "2021" "2022"
+LCC: "2013"    "2015"    "2017"    "2018"    "2019" "2020"    "2021"    "2022" 
+
 
 ```{r eval=FALSE, include=FALSE}
-st_write(joined_points_min_dob, "../outputs/fireatlas_dob/fisl_fireAtlas_dob_2015.shp", driver="ESRI Shapefile")
+st_write(joined_points_min_dob, "../outputs/fireatlas_dob/2025-08-11_LC_fireAtlas_dob_2019.shp", driver="ESRI Shapefile")
 ```

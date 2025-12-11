@@ -13,153 +13,106 @@ rm(list=ls())
 
 Combine all point with DoB attribute for FWI extract.
 
-
-# Packages
-
 ```{r}
 library(sf)
 library(tidyverse)
-```
 
-# Data
-```{r}
-fa2013 = st_read("../outputs/LCC_cleaned/points/dob/fireAtlas_dob_2013_2025-04-28.shp", "fireAtlas_dob_2013_2025-04-28")
-```
+#--------------------------------------
+# Helper: read & merge MODIS + matching Fire Atlas files
+#--------------------------------------
+process_dataset <- function(modis_file, fa_dir, fa_years, dataset_type) {
+  # dataset_type is "LC" or "LCC"
+  
+  # Build full paths for Fire Atlas files
+  fa_files <- file.path(
+    fa_dir,
+    sprintf("%s_fireAtlas_dob_%d.shp", dataset_type, fa_years)
+  )
+  
+  # Check existence
+  missing_files <- fa_files[!file.exists(fa_files)]
+  if (length(missing_files) > 0) {
+    warning("Missing Fire Atlas files: ", paste(basename(missing_files), collapse = ", "))
+  }
+  
+  # Read and combine Fire Atlas
+  fa <- map(fa_files[file.exists(fa_files)], ~ st_read(.x, quiet = TRUE)) %>%
+    bind_rows()
+  
+  # Read MODIS
+  modis <- st_read(modis_file, quiet = TRUE) %>%
+    mutate(fireYr = as.numeric(fireYr))
+  
+  # Prepare Fire Atlas dataframe without geometry
+  fa_df <- fa %>%
+    st_drop_geometry() %>%
+    mutate(ted_date = as.Date(paste(ted_year, ted_month, ted_day, sep = "-"))) %>% 
+    select(ID, ted_doy, ted_date)
+  
+  # Merge and fill dob/date
+  combined <- modis %>%
+    full_join(fa_df, by = c("ID")) %>%
+    mutate(
+      dob = coalesce(dob, ted_doy),
+      ted_date = as.character(ted_date),
+      date = coalesce(date, ted_date)
+    ) 
+  
+  # Keep one row per ID with dob
+  dob_df <- combined %>%
+    group_by(ID) %>%
+    slice(1) %>%
+    ungroup() %>%
+    drop_na(dob)
+  
+  return(dob_df)
+}
 
-```{r}
-fa2015 = st_read("../outputs/LCC_cleaned/points/dob/fireAtlas_dob_2015_2025-04-28.shp", "fireAtlas_dob_2015_2025-04-28")
-```
+#--------------------------------------
+# Paths & settings
+#--------------------------------------
+fa_dir     <- "../outputs/2025-08-11_fireatlas_dob"
+fa_years   <- c(2013, 2015, 2017, 2018, 2019, 2020, 2021, 2022)
 
-```{r}
-fa2017 = st_read("../outputs/LCC_cleaned/points/dob/fireAtlas_dob_2017_2025-04-28.shp", "fireAtlas_dob_2017_2025-04-28")
-```
+lc_file    <- "../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lc_pts_dob.shp"
+lcc_file   <- "../outputs/LCC_cleaned/points/shapefiles/2025-08-11_lcc_pts_dob.shp"
 
-```{r}
-fa2018 = st_read("../outputs/LCC_cleaned/points/dob/fireAtlas_dob_2018_2025-04-28.shp", "fireAtlas_dob_2018_2025-04-28")
-```
+#--------------------------------------
+# Process LC and LCC separately
+#--------------------------------------
+lc_dob  <- process_dataset(lc_file,  fa_dir, fa_years, "LC")
+lcc_dob <- process_dataset(lcc_file, fa_dir, fa_years, "LCC")
 
-```{r}
-fa2019 = st_read("../outputs/LCC_cleaned/points/dob/fireAtlas_dob_2019_2025-04-28.shp", "fireAtlas_dob_2019_2025-04-28")
-```
+#--------------------------------------
+# Write outputs
+#--------------------------------------
+st_write(lc_dob,  "../outputs/LCC_cleaned/points/shapefiles/2025-08-11_LC_dob.shp",  delete_layer = TRUE)
+st_write(lcc_dob, "../outputs/LCC_cleaned/points/shapefiles/2025-08-11_LCC_dob.shp", delete_layer = TRUE)
 
-```{r}
-fa2020 = st_read("../outputs/LCC_cleaned/points/dob/fireAtlas_dob_2020_2025-04-28.shp", "fireAtlas_dob_2020_2025-04-28")
-```
-
-```{r}
-fa2021 = st_read("../outputs/LCC_cleaned/points/dob/fireAtlas_dob_2021_2025-04-28.shp", "fireAtlas_dob_2021_2025-04-28")
-```
-
-```{r}
-fa2022 = st_read("../outputs/LCC_cleaned/points/dob/fireAtlas_dob_2022_2025-04-28.shp", "fireAtlas_dob_2022_2025-04-28")
-```
-
-## modis
-
-
-```{r}
-modislc = st_read("../outputs/LCC_cleaned/points/shapefiles/lc_pts_dob_allpts_2025-04-29.shp", "lc_pts_dob_allpts_2025-04-29")
-```
-
-```{r}
-modislcc = st_read("../outputs/LCC_cleaned/points/shapefiles/lcc_pts_dob_allpts_2025-04-29.shp", "lcc_pts_dob_allpts_2025-04-29")
-```
-
-# Combine Dataframes
-
-```{r}
-modislc
-( modislcc = modislcc %>% mutate(fireYr = as.numeric(fireYr)) )
-```
-
-```{r}
-sort(unique(modislcc$fireYr))
-```
-```{r}
-modis = bind_rows(modislc, modislcc)
-```
-
-```{r}
-fa = bind_rows(fa2013, fa2015, fa2017, fa2018, fa2019, fa2020, fa2021, fa2022)
-```
-
-```{r}
-modis
-fa
-```
-
-```{r}
-setdiff(fa$siteplot, modis$siteplot) 
-```
-
-```{r}
-setdiff( modis$siteplot, fa$siteplot) 
-```
-
-
-```{r}
-( modis_df = modis %>% st_drop_geometry() %>% select(row_id, PI, siteplot, dob))
 ```
 ```{r}
-fa
-```
-```{r}
-( fa_df = fa %>% st_drop_geometry() %>% mutate(ted_date = as.Date(paste(ted_year, ted_month, ted_day, sep = "-"))) %>% select(row_id, PI, siteplot, ted_doy, ted_date))
+lc = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-11_LC_dob.shp", "2025-08-11_LC_dob")
 ```
 
 ```{r}
-modis_df %>% full_join(., fa_df, by=c("row_id", "siteplot"))
-```
-
-
-
-
-# Fill in dob
-
-```{r}
-( combined = modis %>% 
-    full_join(., fa_df, by=c("row_id", "siteplot")) %>% 
-    mutate(dob = coalesce(dob, ted_doy)) %>% 
-    mutate(ted_date = as.character(ted_date)) %>% 
-    mutate(date = coalesce(date, ted_date)) %>%
-    dplyr::select(-PI.y) %>%
-    rename(PI = PI.x)
-)
+lcc = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-11_LCC_dob.shp", "2025-08-11_LCC_dob")
 ```
 
 ```{r}
-( filtered_df = combined %>%
-  add_count(row_id) %>%
-  filter(n== 1) )
-
-unique(filtered_df$PI)
+lc
+lcc
 ```
 
 ```{r}
-( dob_df = combined %>% 
-  group_by(siteplot) %>%
-  slice(1) %>%
-  ungroup() %>%
-  drop_na(dob)
-)
-```
-```{r}
-sort(unique(dob_df$PI) )
-```
-"Dominique Arseneault" "Gundale/Nilsson"      "Hayes"                "Hung and Natali"     
-[5] "Kirsten Reid"         "Metcalfe"             "Walker"  
-
-Loosing "Baltzer", "Diaz-Veraverbeke", "Lucas Brehaut", "Pare", "Saperstein"
-```{r}
-dob_df %>% 
-  group_by(PI, lat, lon, dob, date) %>% 
-  summarise(n = n())
+lc %>% filter(is.na(dob))
+lcc %>% filter(is.na(dob))
 ```
 
 ```{r}
-cat(paste0(sprintf("'%s'", sort(unique(dob_df$date))), collapse = ", "))
+cat(paste0(sprintf("'%s'", sort(unique(lc$date))), collapse = ", "))
 ```
 
-```{r eval=FALSE, include=FALSE}
-st_write(dob_df, "../outputs/LCC_cleaned/points/shapefiles/lc_lcc_dob_2025-04-29.shp", driver="ESRI Shapefile")
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lcc$date))), collapse = ", "))
 ```
