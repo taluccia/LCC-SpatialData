@@ -1,0 +1,156 @@
+---
+title: "New Data"
+author: "Anna Talucci"
+date: "2026-07-30"
+output: html_document
+---
+
+
+> **Project:** LCC
+
+> **Purpose:** Add requested data for Walker/Mack NWT sites: climate NA MAT and MAP and tree cover data from EE
+
+> **Inputs:** Field site info, data form Climate NA and EE extract
+
+> **Output:** files for Climate NA extract; and EE extract
+
+> **Status:** 🚧 in progress
+
+> **Updated:** 2026-07-30
+
+
+```{r}
+library(tidyverse)
+library(sf)
+library(mapview)
+```
+
+
+```{r}
+lcc_sp = read_csv("../data/2026-07-30_Data/2025-12-02_LCC_SpatialData.csv")
+lcc_arc = read_csv("../data/2026-07-30_Data/LCC_LegacyCarbon_archive.csv")
+```
+
+
+```{r}
+lcc_sp
+```
+
+
+```{r}
+
+lcc_arc
+```
+
+```{r}
+unique(lcc_arc$Researcher)
+```
+
+
+```{r}
+lcc_arc %>% filter(Researcher == "Walker/Mack")
+```
+
+```{r}
+(cna = lcc_arc %>% 
+  filter(Researcher == "Walker/Mack") %>%
+  dplyr::select(site, Researcher, plot, Latitude, Longitude) %>%
+  rename(id1 = site, id2 = plot, lat = Latitude, long = Longitude) %>%
+  mutate(elev = "")
+)
+```
+
+```{r}
+write_csv(cna, "../outputs/2026-08-05_Walker_Mack_4CNA.csv")
+```
+
+# For tree cover in EE
+
+```{r}
+df_to_sf_NAD83 <- function(x){
+  st_as_sf(x, coords = c("lon","lat"), crs = 4269, remove = FALSE) # X. Walker states crs epsg:3338 but it ends up in the ocean 
+}
+```
+
+```{r}
+(ee = lcc_arc %>% 
+  filter(Researcher == "Walker/Mack") %>%
+  dplyr::select(Researcher, site, plot, Latitude, Longitude) %>% 
+   rename(lat = Latitude, lon = Longitude) %>%
+    df_to_sf_NAD83() %>%
+    st_transform(., crs = 4326)
+)
+```
+
+## View points
+
+```{r}
+mapview(ee)
+```
+
+## Save
+
+```{r eval=FALSE, include=FALSE}
+st_write(ee, "../outputs/LCC_cleaned/points/shapefiles/2026-08-06_walker_mack_pts_WGS84.shp", driver="ESRI Shapefile")
+```
+
+
+# Walker_Mack Data adds
+
+```{r}
+wm_cna = read_csv("../data/2026-08-06_walker_mack/2026-08-05_Walker_Mack_4CNA_Normal_1981_2010MSY.csv")
+wm_tree = read_csv("../data/2026-08-06_walker_mack/GFCC30TC_walker_mack.csv")
+```
+
+
+```{r}
+( wm_cna1 = wm_cna %>% 
+  dplyr::select(id1, id2, MAT, MAP) %>%
+  rename(site = id1, plot = id2, MAT_ref = MAT, MAP_ref = MAP) %>%
+    mutate(plot = as.character(plot))
+)
+```
+
+```{r}
+( wm_tree1 = wm_tree %>%
+  dplyr::select(Researcher, plot, site, GFCC30TC_2000_V4_b1, GFCC30TC_2005_V4_b1, GFCC30TC_2010_V4_b1, ) %>%
+  rename(tc_2000 = GFCC30TC_2000_V4_b1, tc_2005 = GFCC30TC_2005_V4_b1, tc_2010 = GFCC30TC_2010_V4_b1) %>%
+    mutate(plot = as.character(plot))
+)
+```
+
+```{r}
+
+( df_wm <- lcc_arc %>% 
+  filter(Researcher == "Walker/Mack") %>%
+  left_join(wm_cna1, by = c("plot", "site"), suffix = c("", "_ref")) %>%
+  mutate(
+    MAP = coalesce(MAP, MAP_ref),
+    MAT = coalesce(MAT, MAT_ref)
+  ) %>%
+  select(-ends_with("_ref")) %>%
+    left_join(wm_tree1, by = c("Researcher", "plot", "site")) %>%
+    mutate(
+    tree_cover = coalesce(tree_cover, tc_2010)
+  ) 
+  
+)
+```
+
+```{r}
+lcc_arc
+lcc_arc1 = lcc_arc %>% 
+  filter(Researcher != "Walker/Mack") 
+```
+
+
+```{r}
+
+( lcc_df = bind_rows(lcc_arc1, df_wm) )
+```
+
+
+```{r}
+write_csv(lcc_df, "../outputs/2026-08-06_LCC_LC_Walker_Mack_update.csv")
+```
+
